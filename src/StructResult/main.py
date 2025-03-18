@@ -1,11 +1,16 @@
-from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional, TypeVar, Generic
+
+T = TypeVar("T")
 
 
-@dataclass(slots=True)
-class Result:
-    value: Any
-    err: Optional[list[Exception]] = None
+class Result(Generic[T]):
+    value: T
+    err: Optional[list[Exception]]
+    __slots__ = ("value", "err")
+
+    def __init__(self, value: T, err: list[Exception] = None):
+        self.value = value
+        self.err = err
 
     def __getitem__(self, item):
         if item == 0:
@@ -19,3 +24,8 @@ class Result:
         if self.err is None:
             self.err = list()
         self.err.append(e)
+
+    def extend_err(self, e: list[Exception]):
+        if self.err is None:
+            self.err = list()
+        self.err.extend(e)
