@@ -1,14 +1,14 @@
-from typing import Optional, TypeVar, Generic
+from typing import Optional, TypeVar, Generic, Self
 
 T = TypeVar("T")
 
 
 class Result(Generic[T]):
-    value: T
+    value: Optional[T]
     err: Optional[list[Exception]]
     __slots__ = ("value", "err")
 
-    def __init__(self, value: T, err: list[Exception] = None):
+    def __init__(self, value: Optional[T], err: list[Exception] = None):
         self.value = value
         self.err = err
 
@@ -29,3 +29,16 @@ class Result(Generic[T]):
         if self.err is None:
             self.err = list()
         self.err.extend(e)
+
+
+class ResultList(Result, Generic[T]):
+    value: list[T]
+    __slots__ = ("value", "err")
+
+    def __init__(self):
+        super().__init__(list())
+
+    def append(self, res: Result[T]):
+        self.value.append(res.value)
+        if res.err is not None:
+            self.extend_err(res.err)
