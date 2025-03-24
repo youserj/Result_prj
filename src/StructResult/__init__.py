@@ -1,1 +1,1 @@
-from .main import Result, ResultList
+from . import result

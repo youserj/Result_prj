@@ -1,23 +1,23 @@
 import unittest
-from StructResult import Result, ResultList
+from StructResult import result
 
 
 class TestType(unittest.TestCase):
 
     def test_init(self):
-        res = Result[int](1)
+        res = result.Simple[int](1)
         self.assertEqual(res.value, 1)
         self.assertEqual(list(res), [1, None])
 
     def test_Optional(self):
 
-        def foo() -> Result[int]:
-            return Result(None)
+        def foo() -> result.Simple[int]:
+            return result.Simple(None)
 
-    def test_ResultList(self):
-        res = ResultList[int]()
-        res.append(Result(1, [ValueError("1")]))
-        res.append(Result(2))
-        res.append(Result(None, [ZeroDivisionError()]))
-        res.append(Result("1"))
+    def test_resultList(self):
+        res = result.List[int]()
+        res.append(result.Simple(1, [ValueError("1")]))
+        res.append(result.Simple(2))
+        res.append(result.Simple(None, [ZeroDivisionError()]))
+        res.append(result.Simple("1"))
         print(res)
