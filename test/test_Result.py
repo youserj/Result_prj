@@ -20,4 +20,17 @@ class TestType(unittest.TestCase):
         res.append(result.Simple(2))
         res.append(result.Simple(None, [ZeroDivisionError()]))
         res.append(result.Simple("1"))
+        res += result.Simple(3)
         print(res)
+
+    def test_Null(self):
+        res = result.NONE
+        self.assertRaises(RuntimeError, res.append, result.Simple(1))
+        a, b = res
+        print(a)
+
+    def test_Error(self):
+        res = result.Error()
+        res.append(result.Simple(1, [ZeroDivisionError()]))
+        a, b = res
+        print(a)
