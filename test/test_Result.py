@@ -50,7 +50,7 @@ class TestType(unittest.TestCase):
     def test_simple_append_error(self):
         # Test appending an error Simple result
         res1 = result.Simple(10)
-        res2 = result.Simple(err=ValueError("test error"), msg="test")
+        res2 = result.Simple(e=ValueError("test error"), msg="test")
         res1.append(res2)
         self.assertEqual(res1.value, None)
         self.assertIsNotNone(res1.err)
@@ -58,15 +58,15 @@ class TestType(unittest.TestCase):
 
     def test_simple_append_multiple_errors(self):
         # Test error aggregation
-        res1 = result.Simple(err=TypeError("type error"), msg="test")
-        res2 = result.Simple(err=ValueError("value error"), msg="test")
+        res1 = result.Simple(e=TypeError("type error"), msg="test")
+        res2 = result.Simple(e=ValueError("value error"), msg="test")
         res1.append(res2)
         self.assertEqual(len(res1.err.exceptions), 2)
 
     def test_simple_append_different_messages(self):
         # Test error aggregation with different messages
-        res1 = result.Simple(err=TypeError("type error"), msg="test1")
-        res2 = result.Simple(err=ValueError("value error"), msg="test2")
+        res1 = result.Simple(e=TypeError("type error"), msg="test1")
+        res2 = result.Simple(e=ValueError("value error"), msg="test2")
         res1.append(res2)
         # Should nest the exception groups
         self.assertEqual(len(res1.err.exceptions), 2)
@@ -79,15 +79,15 @@ class TestType(unittest.TestCase):
 
     def test_error_append_value(self):
         # Test that Error ignores values but collects errors
-        err1 = result.Error(err=ValueError("error1"), msg="test")
+        err1 = result.Error(e=ValueError("error1"), msg="test")
         simple = result.Simple(10)
         err1.append(simple)
         self.assertIsNone(err1.value)
 
     def test_error_append_error(self):
         # Test error aggregation in Error class
-        err1 = result.Error(err=ValueError("error1"), msg="test")
-        err2 = result.Error(err=TypeError("error2"), msg="test")
+        err1 = result.Error(e=ValueError("error1"), msg="test")
+        err2 = result.Error(e=TypeError("error2"), msg="test")
         err1.append(err2)
         self.assertEqual(len(err1.err.exceptions), 2)
 
@@ -104,9 +104,9 @@ class TestType(unittest.TestCase):
         # Test mixed success and error cases
         lst = result.List[int](msg="test")
         lst.append(result.Simple(1))
-        lst.append(result.Simple(err=ValueError("error1")))
+        lst.append(result.Simple(e=ValueError("error1")))
         lst.append(result.Simple(2))
-        lst.append(result.Simple(err=TypeError("error2")))
+        lst.append(result.Simple(e=TypeError("error2")))
         self.assertEqual(lst.value, [1, None, 2, None])
         self.assertEqual(len(lst.err.exceptions), 2)
 

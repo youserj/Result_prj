@@ -21,7 +21,7 @@ class Result(Generic[T], ABC):
             raise StopIteration
 
     @abstractmethod
-    def append(self, res: Self):
+    def append(self, res: Self) -> T:
         """"""
 
     def append_err(self, e: Exception | ExceptionGroup):
@@ -60,11 +60,12 @@ class Simple(Result, Generic[T]):
             self.err = None
         self.msg = msg
 
-    def append(self, res: Result):
+    def append(self, res: Result) -> T:
         """set value and append errors"""
         self.value = res.value
         if res.err is not None:
             self.append_err(res.err)
+        return res.value
 
 
 class Null(Result):
@@ -97,9 +98,10 @@ class Error(Result):
             self.err = None
         self.msg = msg
 
-    def append(self, res: Result):
+    def append(self, res: Result) -> None:
         if res.err is not None:
             self.append_err(res.err)
+        return None
 
     @property
     def value(self):
@@ -115,11 +117,12 @@ class List(Result, Generic[T]):
         self.err = None
         self.msg = msg
 
-    def append(self, res: Result[T]):
+    def append(self, res: Result[T]) -> T:
         """append value and errors"""
         self.value.append(res.value)
         if res.err is not None:
             self.append_err(res.err)
+        return res.value[-1]
 
     def __add__(self, other: Result[T]) -> Self:
         self.append(other)
