@@ -1,4 +1,4 @@
-from typing import Optional, TypeVar, Generic, Self
+from typing import Optional, TypeVar, Generic, Self, Any
 from abc import ABC, abstractmethod
 
 T = TypeVar("T")
@@ -98,10 +98,10 @@ class Error(Result):
             self.err = None
         self.msg = msg
 
-    def append(self, res: Result) -> None:
+    def append(self, res: Result) -> Any:
         if res.err is not None:
             self.append_err(res.err)
-        return None
+        return res.value
 
     @property
     def value(self):

@@ -9,16 +9,21 @@ where = ["src"]
 
 [project]
 name = "StructResult"
-version = "0.5.1"
+version = "0.5.2"
 requires-python = ">= 3.12"
 authors = [
     {name="Serj Kotilevski", email="youserj@outlook.com"}
 ]
 dependencies = [
 ]
-description="structural result with exception"
+description="structural result with ExceptionGroup"
 readme = "README.md"
-keywords=['result', 'exception']
+keywords=[
+    'result',
+    'Exception',
+    'ExceptionGroup',
+    'AggregateExceptions'
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
