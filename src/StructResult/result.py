@@ -8,7 +8,8 @@ empty = tuple()
 
 class Result(Generic[T], ABC):
     value: Optional[T]
-    err: Optional[list[Exception]]
+    err: Optional[ExceptionGroup]
+    msg: str = ""
     __slots__ = empty
 
     def __getitem__(self, item):
@@ -23,31 +24,47 @@ class Result(Generic[T], ABC):
     def append(self, res: Self):
         """"""
 
-    def append_err(self, e: Exception):
-        if self.err is None:
-            self.err = list()
-        self.err.append(e)
+    def append_err(self, e: Exception | ExceptionGroup):
+        if isinstance(e, ExceptionGroup):
+            if self.err is None:
+                self.err = e
+            elif self.msg == e.message:
+                self.err = ExceptionGroup(self.msg, (*self.err.exceptions, *e.exceptions))
+            else:
+                self.err = ExceptionGroup(self.msg, (*self.err.exceptions, e))
+        else:  # for Exception
+            if self.err is None:
+                self.err = ExceptionGroup(self.msg, (e,))
+            elif self.msg == self.err.message:
+                self.err = ExceptionGroup(self.msg, (*self.err.exceptions, e))
+            else:
+                self.err = ExceptionGroup(self.msg, (e, self.err))
 
-    def extend_err(self, e: list[Exception]):
-        if self.err is None:
-            self.err = list()
-        self.err.extend(e)
+    def unwrap(self) -> T:
+        if self.err:
+            raise self.err
+        return self.value
+
+    def is_ok(self) -> bool:
+        return self.err is None
 
 
 class Simple(Result, Generic[T]):
-    value: Optional[T]
-    err: Optional[list[Exception]]
-    __slots__ = ("value", "err")
+    __slots__ = ("value", "err", "msg")
 
-    def __init__(self, value: Optional[T] = None, err: list[Exception] = None):
+    def __init__(self, value: Optional[T] = None, e: Exception = None, msg: str = ""):
         self.value = value
-        self.err = err
+        if e is not None:
+            self.err = ExceptionGroup(msg, (e,))
+        else:
+            self.err = None
+        self.msg = msg
 
     def append(self, res: Result):
         """set value and append errors"""
         self.value = res.value
         if res.err is not None:
-            self.extend_err(res.err)
+            self.append_err(res.err)
 
 
 class Null(Result):
@@ -71,15 +88,18 @@ NONE = Null()
 
 
 class Error(Result):
-    err: Optional[list[Exception]]
-    __slots__ = ("err",)
+    __slots__ = ("err", "msg")
 
-    def __init__(self, err: list[Exception] = None):
-        self.err = err
+    def __init__(self, e: Exception = None, msg: str = ""):
+        if e is not None:
+            self.err = ExceptionGroup(msg, (e,))
+        else:
+            self.err = None
+        self.msg = msg
 
     def append(self, res: Result):
         if res.err is not None:
-            self.extend_err(res.err)
+            self.append_err(res.err)
 
     @property
     def value(self):
@@ -88,17 +108,18 @@ class Error(Result):
 
 class List(Result, Generic[T]):
     value: list[T]
-    __slots__ = ("value", "err")
+    __slots__ = ("value", "err", "msg")
 
-    def __init__(self, err: list[Exception] = None):
+    def __init__(self, msg: str = ""):
         self.value = list()
-        self.err = err
+        self.err = None
+        self.msg = msg
 
     def append(self, res: Result[T]):
         """append value and errors"""
         self.value.append(res.value)
         if res.err is not None:
-            self.extend_err(res.err)
+            self.append_err(res.err)
 
     def __add__(self, other: Result[T]) -> Self:
         self.append(other)
