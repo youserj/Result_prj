@@ -122,7 +122,7 @@ class List(Result, Generic[T]):
         self.value.append(res.value)
         if res.err is not None:
             self.append_err(res.err)
-        return res.value[-1]
+        return res.value
 
     def __add__(self, other: Result[T]) -> Self:
         self.append(other)
