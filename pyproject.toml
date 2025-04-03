@@ -9,7 +9,7 @@ where = ["src"]
 
 [project]
 name = "StructResult"
-version = "0.5.3"
+version = "0.5.4"
 requires-python = ">= 3.12"
 authors = [
     {name="Serj Kotilevski", email="youserj@outlook.com"}

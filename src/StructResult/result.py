@@ -109,7 +109,7 @@ class Error(Result):
 
 
 class List(Result, Generic[T]):
-    value: list[T]
+    value: Optional[list[T]]
     __slots__ = ("value", "err", "msg")
 
     def __init__(self, msg: str = ""):
