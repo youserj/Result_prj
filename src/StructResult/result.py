@@ -25,6 +25,7 @@ class Result(Generic[T], ABC):
         """"""
 
     def append_err(self, e: Exception | ExceptionGroup):
+        """append except"""
         if isinstance(e, ExceptionGroup):
             if self.err is None:
                 self.err = e
@@ -39,6 +40,11 @@ class Result(Generic[T], ABC):
                 self.err = ExceptionGroup(self.msg, (*self.err.exceptions, e))
             else:
                 self.err = ExceptionGroup(self.msg, (e, self.err))
+
+    def propagate_err(self, res: 'Result') -> T:
+        """Propagates (merges) the error from another Result into this one, returning its value"""
+        self.append_err(res.err)
+        return res.value
 
     def unwrap(self) -> T:
         if self.err:
