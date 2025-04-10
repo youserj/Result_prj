@@ -124,9 +124,8 @@ class TestType(unittest.TestCase):
         self.assertEqual(lst.value, ["string"])
 
     def test_type_return(self):
-        res1 = result.Result[str]()
-        res2 = result.Result[int]()
+        res1 = result.Simple[str]()
+        res2 = result.Simple[int]()
         res3: int = res1.propagate_err(res2)
         err_res = result.Error()
         res4: int = err_res.append(res2)
-

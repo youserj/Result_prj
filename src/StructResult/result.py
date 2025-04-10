@@ -22,7 +22,7 @@ class Result(Generic[T], ABC):
             raise StopIteration
 
     @abstractmethod
-    def append(self, res: 'Result'[T]) -> T:
+    def append(self, res: 'Result[T]') -> T:
         """"""
 
     def append_err(self, e: Exception | ExceptionGroup):
@@ -42,7 +42,7 @@ class Result(Generic[T], ABC):
             else:
                 self.err = ExceptionGroup(self.msg, (e, self.err))
 
-    def propagate_err(self, res: 'Result'[T2]) -> T2:
+    def propagate_err(self, res: 'Result[T2]') -> T2:
         """Propagates (merges) the error from another Result into this one, returning its value"""
         if res.err is not None:
             self.append_err(res.err)
@@ -78,7 +78,7 @@ class Null(Result):
     """can't append value or errors"""
     __slots__ = empty
 
-    def append(self, res: 'Result'):
+    def append(self, res: Result):
         raise RuntimeError(F"can't append for {self.__class__.__name__}")
 
     @property
@@ -104,7 +104,7 @@ class Error(Result):
             self.err = None
         self.msg = msg
 
-    def append(self, res: 'Result'[T]) -> T:
+    def append(self, res: Result[T]) -> T:
         return self.propagate_err(res)
 
     @property
