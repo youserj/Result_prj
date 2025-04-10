@@ -122,3 +122,11 @@ class TestType(unittest.TestCase):
         lst = result.List[int]()
         lst.append(result.Simple("string"))  # This should ideally raise TypeError
         self.assertEqual(lst.value, ["string"])
+
+    def test_type_return(self):
+        res1 = result.Result[str]()
+        res2 = result.Result[int]()
+        res3: int = res1.propagate_err(res2)
+        err_res = result.Error()
+        res4: int = err_res.append(res2)
+

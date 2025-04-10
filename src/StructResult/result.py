@@ -2,6 +2,7 @@ from typing import Optional, TypeVar, Generic, Self, Any
 from abc import ABC, abstractmethod
 
 T = TypeVar("T")
+T2 = TypeVar("T2")
 
 empty = tuple()
 
@@ -21,7 +22,7 @@ class Result(Generic[T], ABC):
             raise StopIteration
 
     @abstractmethod
-    def append(self, res: Self) -> T:
+    def append(self, res: 'Result'[T]) -> T:
         """"""
 
     def append_err(self, e: Exception | ExceptionGroup):
@@ -41,9 +42,10 @@ class Result(Generic[T], ABC):
             else:
                 self.err = ExceptionGroup(self.msg, (e, self.err))
 
-    def propagate_err(self, res: 'Result') -> T:
+    def propagate_err(self, res: 'Result'[T2]) -> T2:
         """Propagates (merges) the error from another Result into this one, returning its value"""
-        self.append_err(res.err)
+        if res.err is not None:
+            self.append_err(res.err)
         return res.value
 
     def unwrap(self) -> T:
@@ -58,7 +60,7 @@ class Result(Generic[T], ABC):
 class Simple(Result, Generic[T]):
     __slots__ = ("value", "err", "msg")
 
-    def __init__(self, value: Optional[T] = None, e: Exception = None, msg: str = ""):
+    def __init__(self, value: T = None, e: Exception = None, msg: str = ""):
         self.value = value
         if e is not None:
             self.err = ExceptionGroup(msg, (e,))
@@ -66,19 +68,17 @@ class Simple(Result, Generic[T]):
             self.err = None
         self.msg = msg
 
-    def append(self, res: Result) -> T:
+    def append(self, res: Result[T]) -> T:
         """set value and append errors"""
         self.value = res.value
-        if res.err is not None:
-            self.append_err(res.err)
-        return res.value
+        return self.propagate_err(res)
 
 
 class Null(Result):
     """can't append value or errors"""
     __slots__ = empty
 
-    def append(self, res: Self):
+    def append(self, res: 'Result'):
         raise RuntimeError(F"can't append for {self.__class__.__name__}")
 
     @property
@@ -104,10 +104,8 @@ class Error(Result):
             self.err = None
         self.msg = msg
 
-    def append(self, res: Result) -> Any:
-        if res.err is not None:
-            self.append_err(res.err)
-        return res.value
+    def append(self, res: 'Result'[T]) -> T:
+        return self.propagate_err(res)
 
     @property
     def value(self):
@@ -126,9 +124,7 @@ class List(Result, Generic[T]):
     def append(self, res: Result[T]) -> T:
         """append value and errors"""
         self.value.append(res.value)
-        if res.err is not None:
-            self.append_err(res.err)
-        return res.value
+        return self.propagate_err(res)
 
     def __add__(self, other: Result[T]) -> Self:
         self.append(other)
