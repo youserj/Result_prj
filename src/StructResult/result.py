@@ -1,31 +1,29 @@
-from typing import Optional, TypeVar, Generic, Self, Any
-from abc import ABC, abstractmethod
-
-T = TypeVar("T")
-T2 = TypeVar("T2")
-
-empty = tuple()
+from dataclasses import dataclass, field
+from typing import Optional, Self, Any, Protocol, Iterator, Final
 
 
-class Result(Generic[T], ABC):
+class Result[T](Protocol):
     value: Optional[T]
     err: Optional[ExceptionGroup]
     msg: str = ""
-    __slots__ = empty
 
-    def __getitem__(self, item):
-        if item == 0:
-            return self.value
-        elif item == 1:
-            return self.err
-        else:
-            raise StopIteration
+    def __iter__(self) -> Iterator[T | ExceptionGroup[Exception] | None]:
+        return iter((self.value, self.err))
 
-    @abstractmethod
-    def append(self, res: 'Result[T]') -> T:
-        """"""
+    def unwrap(self) -> Optional[T]:
+        if self.err:
+            raise self.err
+        return self.value
 
-    def append_err(self, e: Exception | ExceptionGroup):
+    def is_ok(self) -> bool:
+        return self.err is None
+
+
+class ErrorGrouper(Protocol):
+    err: Optional[ExceptionGroup]
+    msg: str = ""
+
+    def append_err(self, e: Exception | ExceptionGroup) -> Self:
         """append except"""
         if isinstance(e, ExceptionGroup):
             if self.err is None:
@@ -41,88 +39,60 @@ class Result(Generic[T], ABC):
                 self.err = ExceptionGroup(self.msg, (*self.err.exceptions, e))
             else:
                 self.err = ExceptionGroup(self.msg, (e, self.err))
+        return self
 
-    def propagate_err(self, res: 'Result[T2]') -> T2:
+
+class ErrorPropagator(ErrorGrouper, Protocol):
+    def propagate_err[T](self, res: Result[T]) -> Optional[T]:
         """Propagates (merges) the error from another Result into this one, returning its value"""
         if res.err is not None:
             self.append_err(res.err)
         return res.value
 
-    def unwrap(self) -> T:
-        if self.err:
-            raise self.err
-        return self.value
 
-    def is_ok(self) -> bool:
-        return self.err is None
+class Appender[T](ErrorPropagator, Protocol):
+    def append(self, res: Result[T]) -> Optional[T]: ...
 
 
-class Simple(Result, Generic[T]):
-    __slots__ = ("value", "err", "msg")
+@dataclass(slots=True)
+class Simple[T](Result[T], Appender[T]):
+    value: Optional[T] = field(default=None)
+    msg: str = field(default="")
+    err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def __init__(self, value: T = None, e: Exception = None, msg: str = ""):
-        self.value = value
-        if e is not None:
-            self.err = ExceptionGroup(msg, (e,))
-        else:
-            self.err = None
-        self.msg = msg
-
-    def append(self, res: Result[T]) -> T:
+    def append(self, res: Result[T]) -> Optional[T]:
         """set value and append errors"""
         self.value = res.value
         return self.propagate_err(res)
 
 
-class Null(Result):
-    """can't append value or errors"""
-    __slots__ = empty
-
-    def append(self, res: Result):
-        raise RuntimeError(F"can't append for {self.__class__.__name__}")
-
-    @property
-    def value(self):
-        return None
-
-    @property
-    def err(self):
-        return None
+@dataclass(frozen=True)
+class Null(Result[Any]):
+    value: Final[None] = None
+    err: None = None
 
 
 NONE = Null()
 """None result"""
 
 
-class Error(Result):
-    __slots__ = ("err", "msg")
-
-    def __init__(self, e: Exception = None, msg: str = ""):
-        if e is not None:
-            self.err = ExceptionGroup(msg, (e,))
-        else:
-            self.err = None
-        self.msg = msg
-
-    def append(self, res: Result[T]) -> T:
-        return self.propagate_err(res)
-
-    @property
-    def value(self):
-        return None
+@dataclass(slots=True)
+class Error(ErrorPropagator, Result[Any]):
+    value: Final[None] = field(default=None)
+    msg: str = field(default="")
+    err: Optional[ExceptionGroup] = field(init=False, default=None)
 
 
-class List(Result, Generic[T]):
-    value: Optional[list[T]]
-    __slots__ = ("value", "err", "msg")
+@dataclass(slots=True)
+class List[T](Appender[T], Result[list[Optional[T]]]):
+    msg: str = field(default="")
+    value: Optional[list[Optional[T]]] = field(init=False, default=None)
+    err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def __init__(self, msg: str = ""):
-        self.value = list()
-        self.err = None
-        self.msg = msg
-
-    def append(self, res: Result[T]) -> T:
+    def append(self, res: Result[T]) -> Optional[T]:
         """append value and errors"""
+        if self.value is None:
+            self.value = []
         self.value.append(res.value)
         return self.propagate_err(res)
 
