@@ -4,7 +4,7 @@ from src.StructResult.formatter import format_eg
 
 
 class TestFormatEG(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.simple_error = ValueError("Simple error")
         self.nested_group = ExceptionGroup("Nested", [TypeError("Type error")])
 
@@ -23,18 +23,18 @@ class TestFormatEG(unittest.TestCase):
         self.list_result.append(Simple[int](value=42))
         self.list_result.append(Simple[int](value=None))
 
-    def test_basic_exception_group(self):
+    def test_basic_exception_group(self) -> None:
         eg = ExceptionGroup("Test", [self.simple_error])
         result = format_eg(eg)
         expected = "Test (1 sub-exception):\n  - ValueError('Simple error')"
         self.assertEqual(result, expected)
 
-    def test_nested_exception_group(self):
+    def test_nested_exception_group(self) -> None:
         result = format_eg(self.nested_group)
         expected = "Nested (1 sub-exception):\n  - TypeError('Type error')"
         self.assertEqual(result, expected)
 
-    def test_complex_exception_group(self):
+    def test_complex_exception_group(self) -> None:
         result = format_eg(self.complex_group)
         expected = (
             "Complex (3 sub-exceptions):\n"
@@ -46,7 +46,7 @@ class TestFormatEG(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
-    def test_with_result_protocol(self):
+    def test_with_result_protocol(self) -> None:
         error_result = Simple[str](value=None)
         error_result.append_err(self.complex_group)
 
@@ -61,7 +61,7 @@ class TestFormatEG(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
-    def test_custom_formatting(self):
+    def test_custom_formatting(self) -> None:
         eg = ExceptionGroup("Custom", [self.simple_error])
         result = format_eg(
             eg,
@@ -73,7 +73,7 @@ class TestFormatEG(unittest.TestCase):
         expected = "Custom:\n    * ValueError: Simple error"
         self.assertEqual(result, expected)
 
-    def test_with_list_result_errors(self):
+    def test_with_list_result_errors(self) -> None:
         list_result = List[int]()
         list_result.append(Simple[int](value=1))
         error_result = Simple[int](value=2)
@@ -85,7 +85,7 @@ class TestFormatEG(unittest.TestCase):
             expected = " (1 sub-exception):\n  - ValueError('Simple error')"
             self.assertTrue(result.endswith(expected))
 
-    def test_protocol_compatibility(self):
+    def test_protocol_compatibility(self) -> None:
         error_result = Error(msg="test")
         error_result.append_err(self.complex_group)
 
@@ -93,7 +93,7 @@ class TestFormatEG(unittest.TestCase):
         formatted = format_eg(error_result.err)
         self.assertIn("Complex (3 sub-exceptions)", formatted)
 
-    def test_multiple_nesting_levels(self):
+    def test_multiple_nesting_levels(self) -> None:
         level3 = ExceptionGroup("Level3", [RuntimeError("Deep error")])
         level2 = ExceptionGroup("Level2", [level3])
         level1 = ExceptionGroup("Level1", [level2])

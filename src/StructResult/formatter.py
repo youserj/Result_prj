@@ -35,7 +35,7 @@ def format_eg(
             - TypeError('Bad type')
     """
     current_prefix = prefix * indent
-    count_info = f" ({len(eg.exceptions)} sub-exception{'s'[:len(eg.exceptions)!=1]})" if show_count else ""
+    count_info = f" ({len(eg.exceptions)} sub-exception{'s'[:len(eg.exceptions) != 1]})" if show_count else ""
     msg = [f"{current_prefix}{eg.message}{count_info}:"]
 
     for exc in eg.exceptions:
