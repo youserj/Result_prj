@@ -63,7 +63,8 @@ class TestResultProtocols(unittest.TestCase):
 
         self.assertEqual(lst.value, [1, 2])
         self.assertIsNotNone(lst.err)
-        self.assertEqual(len(lst.err.exceptions), 2)
+        if lst.err is not None:
+            self.assertEqual(len(lst.err.exceptions), 2)
         self.assertFalse(lst.is_ok())
 
     def test_list_add_operator(self) -> None:
@@ -89,7 +90,8 @@ class TestResultProtocols(unittest.TestCase):
         result = target.propagate_err(source_err)
         self.assertEqual(result, "err")
         self.assertIsNotNone(target.err)
-        self.assertEqual(len(target.err.exceptions), 1)
+        if target.err is not None:
+            self.assertEqual(len(target.err.exceptions), 1)
 
     def test_error_grouping(self) -> None:
         grouper = Simple[Any](msg="group")
@@ -97,8 +99,9 @@ class TestResultProtocols(unittest.TestCase):
         grouper.append_err(self.exception2)
 
         self.assertIsNotNone(grouper.err)
-        self.assertEqual(len(grouper.err.exceptions), 2)
-        self.assertEqual(grouper.err.message, "group")
+        if grouper.err is not None:
+            self.assertEqual(len(grouper.err.exceptions), 2)
+            self.assertEqual(grouper.err.message, "group")
 
     def test_exception_group_merging(self) -> None:
         grouper = Simple[Any](msg="group")
@@ -109,8 +112,9 @@ class TestResultProtocols(unittest.TestCase):
         grouper.append_err(group2)
 
         self.assertIsNotNone(grouper.err)
-        self.assertEqual(len(grouper.err.exceptions), 2)
-        self.assertEqual(grouper.err.message, "group")
+        if grouper.err is not None:
+            self.assertEqual(len(grouper.err.exceptions), 2)
+            self.assertEqual(grouper.err.message, "group")
 
     def test_different_message_groups(self) -> None:
         grouper = Simple[Any](msg="main")
@@ -120,8 +124,9 @@ class TestResultProtocols(unittest.TestCase):
 
         self.assertIsNotNone(grouper.err)
         # Should be wrapped in a new group with "main" message
-        self.assertEqual(grouper.err.message, "other")
-        self.assertEqual(len(grouper.err.exceptions), 1)
+        if grouper.err is not None:
+            self.assertEqual(grouper.err.message, "other")
+            self.assertEqual(len(grouper.err.exceptions), 1)
         self.assertIsInstance(grouper.err, ExceptionGroup)
 
     def test_simple_append(self) -> None:
@@ -153,4 +158,5 @@ class TestResultProtocols(unittest.TestCase):
 
         self.assertEqual(lst.value, [1, 2, 3])
         self.assertIsNotNone(lst.err)
-        self.assertEqual(len(lst.err.exceptions), 1)
+        if lst.err is not None:
+            self.assertEqual(len(lst.err.exceptions), 1)

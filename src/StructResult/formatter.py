@@ -1,11 +1,14 @@
+from typing import Callable
+
+
 def format_eg(
-        eg: BaseExceptionGroup,
+        eg: ExceptionGroup,
         indent: int = 0,
         *,
         prefix: str = "  ",
         bullet: str = "- ",
         show_count: bool = True,
-        repr_fn: callable = repr,
+        repr_fn: Callable[[BaseException], str] = repr,
 ) -> str:
     """
     Formats an ExceptionGroup into a readable tree-like string representation.

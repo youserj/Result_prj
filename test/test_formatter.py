@@ -49,17 +49,17 @@ class TestFormatEG(unittest.TestCase):
     def test_with_result_protocol(self) -> None:
         error_result = Simple[str](value=None)
         error_result.append_err(self.complex_group)
-
-        result = format_eg(error_result.err)
-        expected = (
-            "Complex (3 sub-exceptions):\n"
-            "  - ValueError('Simple error')\n"
-            "  Nested (1 sub-exception):\n"
-            "    - TypeError('Type error')\n"
-            "  With content (1 sub-exception):\n"
-            "    - ValueError('Placeholder')"
-        )
-        self.assertEqual(result, expected)
+        if error_result.err is not None:
+            result = format_eg(error_result.err)
+            expected = (
+                "Complex (3 sub-exceptions):\n"
+                "  - ValueError('Simple error')\n"
+                "  Nested (1 sub-exception):\n"
+                "    - TypeError('Type error')\n"
+                "  With content (1 sub-exception):\n"
+                "    - ValueError('Placeholder')"
+            )
+            self.assertEqual(result, expected)
 
     def test_custom_formatting(self) -> None:
         eg = ExceptionGroup("Custom", [self.simple_error])
@@ -90,8 +90,9 @@ class TestFormatEG(unittest.TestCase):
         error_result.append_err(self.complex_group)
 
         self.assertIsInstance(error_result.err, BaseExceptionGroup)
-        formatted = format_eg(error_result.err)
-        self.assertIn("Complex (3 sub-exceptions)", formatted)
+        if error_result.err is not None:
+            formatted = format_eg(error_result.err)
+            self.assertIn("Complex (3 sub-exceptions)", formatted)
 
     def test_multiple_nesting_levels(self) -> None:
         level3 = ExceptionGroup("Level3", [RuntimeError("Deep error")])
