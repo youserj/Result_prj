@@ -17,8 +17,7 @@ class TestFormatEG(unittest.TestCase):
 
         # Create test Result objects
         self.simple_result = Simple[str](value="test")
-        self.error_result = Error(msg="error occurred")
-        self.error_result.append_err(self.simple_error)
+        self.error_result = Error(self.simple_error, msg="error occurred")
         self.list_result = List[int]()
         self.list_result.append(Simple[int](value=42))
         self.list_result.append(Simple[int](value=None))
@@ -86,8 +85,7 @@ class TestFormatEG(unittest.TestCase):
             self.assertTrue(result.endswith(expected))
 
     def test_protocol_compatibility(self) -> None:
-        error_result = Error(msg="test")
-        error_result.append_err(self.complex_group)
+        error_result = Error(self.complex_group, msg="test")
 
         self.assertIsInstance(error_result.err, BaseExceptionGroup)
         if error_result.err is not None:

@@ -1,6 +1,6 @@
 import unittest
 from typing import Any
-from src.StructResult.result import Simple, NONE, Error, List
+from src.StructResult.result import Simple, Error, List, Null
 
 
 class TestResultProtocols(unittest.TestCase):
@@ -28,20 +28,12 @@ class TestResultProtocols(unittest.TestCase):
         self.assertEqual(list(res), [42, res.err])
 
     def test_null(self) -> None:
-        self.assertIsNone(NONE.value)
-        self.assertIsNone(NONE.err)
-        self.assertTrue(NONE.is_ok())
-        self.assertIsNone(NONE.unwrap())
-        self.assertEqual(list(NONE), [None, None])
+        self.assertTrue(Null().is_ok())
 
     def test_error(self) -> None:
-        err = Error(msg="test")
-        err.append_err(self.exception1)
-        self.assertIsNone(err.value)
+        err = Error(self.exception1, msg="test")
         self.assertIsNotNone(err.err)
         self.assertFalse(err.is_ok())
-        with self.assertRaises(ExceptionGroup):
-            err.unwrap()
 
     def test_list_append(self) -> None:
         lst = List[int]()
@@ -136,12 +128,12 @@ class TestResultProtocols(unittest.TestCase):
         res_err.append_err(self.exception1)
 
         # Append OK result
-        simple.append(res_ok)
+        simple.set(res_ok)
         self.assertEqual(simple.value, 42)
         self.assertIsNone(simple.err)
 
         # Append error result
-        simple.append(res_err)
+        simple.set(res_err)
         self.assertEqual(simple.value, 0)
         self.assertIsNotNone(simple.err)
 

@@ -9,7 +9,7 @@ where = ["src"]
 
 [project]
 name = "StructResult"
-version = "0.6.2"
+version = "0.7.0"
 requires-python = ">= 3.12"
 authors = [
     {name="Serj Kotilevski", email="youserj@outlook.com"}
@@ -64,8 +64,7 @@ exclude = [
     "venv",
 ]
 include = [
-    "src/*/*.py",
-    "examples/*/*.py",
+    "src/**/*.py",
     "test/test_*.py"
 ]
 
