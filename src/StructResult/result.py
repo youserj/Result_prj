@@ -68,7 +68,7 @@ class Null(Result):
     msg: str = ""
 
     def is_ok(self) -> bool:
-        return True
+        return False
 
 
 class Error(ErrorPropagator):
