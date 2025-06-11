@@ -71,6 +71,14 @@ class Null(Result):
         return False
 
 
+@dataclass(slots=True)
+class OK(Result):
+    msg: str = ""
+
+    def is_ok(self) -> bool:
+        return True
+
+
 class Error(ErrorPropagator):
     __slots__ = ("msg", "err")
 
