@@ -81,6 +81,7 @@ class OK(Result):
 
 class Error(ErrorPropagator):
     __slots__ = ("msg", "err")
+    err: ExceptionGroup
 
     def __init__(self, e: Exception, msg: str = "") -> None:
         self.msg = msg

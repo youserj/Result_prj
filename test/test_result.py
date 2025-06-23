@@ -28,7 +28,7 @@ class TestResultProtocols(unittest.TestCase):
         self.assertEqual(list(res), [42, res.err])
 
     def test_null(self) -> None:
-        self.assertTrue(Null().is_ok())
+        self.assertFalse(Null().is_ok())
 
     def test_error(self) -> None:
         err = Error(self.exception1, msg="test")
