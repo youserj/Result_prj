@@ -46,7 +46,7 @@ class TestFormatEG(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_with_result_protocol(self) -> None:
-        error_result = Simple[str](value=None)
+        error_result = Simple[str]()
         error_result.append_err(self.complex_group)
         if error_result.err is not None:
             result = format_eg(error_result.err)

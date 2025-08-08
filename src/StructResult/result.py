@@ -94,13 +94,16 @@ class List[T](Collector[list[Optional[T]]], Result):
     value: list[Optional[T]] = field(init=False, default_factory=list)
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def append(self, res: Simple[T]) -> Optional[T]:
-        """append value and errors"""
-        if self.value is None:
-            self.value = []
-        self.value.append(res.value)
-        return self.propagate_err(res)
+    def append(self, res: Collector[Optional[T]] | Error | OK | Null) -> None:
+        """append value and errors if possible"""
+        if hasattr(res, "value"):
+            self.value.append(res.value)
+        if (
+            hasattr(res, "err")
+            and res.err is not None
+        ):
+            self.append_err(res.err)
 
-    def __add__(self, other: Simple[T]) -> Self:
+    def __add__(self, other: Collector[Optional[T]] | Error | OK | Null) -> Self:
         self.append(other)
         return self
