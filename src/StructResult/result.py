@@ -1,24 +1,45 @@
 from dataclasses import dataclass, field
 from typing import Optional, Self, Protocol, Iterator, Any
+"""
+Functional error handling system with:
+- Result composition
+- Error accumulation 
+- Type-safe operations
+
+Core concepts:
+- Result: Operation outcome (success/failure)
+- ErrorPropagator: Error accumulation mechanism
+- Collector: Value container with error handling
+"""
 
 
 class Result(Protocol):
-    msg: str
-
-    def is_ok(self) -> bool: ...
+    """Protocol for operation results"""
+    def is_ok(self) -> bool:
+        """Returns True if successful (no errors)"""
 
 
 class ErrorPropagator(Result, Protocol):
+    """Protocol for error-accumulating types"""
     err: Optional[ExceptionGroup]
+    msg: str
 
     def is_ok(self) -> bool:
         return self.err is None
 
     def append_err(self, e: Exception | ExceptionGroup) -> Self:
-        """append except"""
+        """Adds an exception or exception group to the collector.
+        Rules:
+        - For ExceptionGroup with matching message: merges exceptions
+        - For ExceptionGroup with different message: preserves structure
+        - For single Exception: adds to existing group or creates new one
+        """
         if isinstance(e, ExceptionGroup):
             if self.err is None:
-                self.err = e
+                if self.msg == e.message:
+                    self.err = e
+                else:
+                    self.err = ExceptionGroup(self.msg, (e,))
             elif self.msg == e.message:
                 self.err = ExceptionGroup(self.msg, (*self.err.exceptions, *e.exceptions))
             else:
@@ -33,19 +54,24 @@ class ErrorPropagator(Result, Protocol):
         return self
 
     def propagate_err[T](self, res: "Collector[T]") -> Optional[T]:
-        """Propagates (merges) the error from another Result into this one, returning its value"""
+        """Merges errors from another result and returns its value:
+        1. If res has errors - merges them into current
+        2. Returns res's value (if exists)
+        """
         if res.err is not None:
             self.append_err(res.err)
         return res.value if hasattr(res, "value") else None
 
 
 class Collector[T](ErrorPropagator, Protocol):
+    """Protocol for value containers with error handling"""
     value: T
 
     def __iter__(self) -> Iterator[Any]:
         return iter((self.value, self.err))
 
     def unwrap(self) -> T:
+        """Returns value or raises exception if errors exist"""
         if self.err:
             raise self.err
         return self.value
@@ -53,6 +79,7 @@ class Collector[T](ErrorPropagator, Protocol):
 
 @dataclass(slots=True)
 class Simple[T](Collector[Optional[T]], Result):
+    """Basic collector for optional values"""
     msg: str = ""
     value: Optional[T] = field(default=None)
     err: Optional[ExceptionGroup] = field(init=False, default=None)
@@ -64,22 +91,35 @@ class Simple[T](Collector[Optional[T]], Result):
 
 
 @dataclass(slots=True)
-class Null(Result):
+class Bool(Collector[bool], Result):
+    """Specialized collector for boolean results"""
     msg: str = ""
+    value: bool = field(default=False)
+    err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def is_ok(self) -> bool:
-        return False
+    def set(self, res: "Bool") -> bool:
+        """set value and append errors"""
+        self.value = res.value
+        self.propagate_err(res)
+        return res.value
 
 
-@dataclass(slots=True)
-class OK(Result):
-    msg: str = ""
+class Ok(Result):
+    """Singleton success marker without value"""
+    __slots__ = ()
 
     def is_ok(self) -> bool:
         return True
 
+    def __str__(self) -> str:
+        return "OK"
+
+
+OK = Ok()
+
 
 class Error(ErrorPropagator):
+    """Error-only result container"""
     __slots__ = ("msg", "err")
     err: ExceptionGroup
 
@@ -89,21 +129,28 @@ class Error(ErrorPropagator):
 
 
 @dataclass(slots=True)
-class List[T](Collector[list[Optional[T]]], Result):
+class List[T](Collector[list[Optional[T | Ok]]], Result):
+    """List collector with error accumulation"""
     msg: str = ""
-    value: list[Optional[T]] = field(init=False, default_factory=list)
+    value: list[Optional[T] | Ok] = field(init=False, default_factory=list)
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def append(self, res: Collector[Optional[T]] | Error | OK | Null) -> None:
-        """append value and errors if possible"""
-        if hasattr(res, "value"):
-            self.value.append(res.value)
-        if (
-            hasattr(res, "err")
-            and res.err is not None
-        ):
+    def append(self, res: Collector[Optional[T]] | Error | Ok) -> None:
+        """Appends result with rules:
+        - For OK: adds OK marker
+        - For Error: adds None and merges errors
+        - For Collector: adds value and merges errors
+        """
+        if isinstance(res, Ok):
+            self.value.append(OK)
+            return
+        if res.err is not None:
             self.append_err(res.err)
+        if isinstance(res, Error):
+            self.value.append(None)
+        else:
+            self.value.append(res.value)
 
-    def __add__(self, other: Collector[Optional[T]] | Error | OK | Null) -> Self:
+    def __add__(self, other: Collector[Optional[T]] | Error | Ok) -> Self:
         self.append(other)
         return self
