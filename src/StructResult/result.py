@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any
+from typing import Optional, Self, Protocol, Iterator, Any, TypeGuard
+
 """
 Functional error handling system with:
 - Result composition
-- Error accumulation 
+- Error accumulation
 - Type-safe operations
 
 Core concepts:
@@ -17,6 +18,20 @@ class Result(Protocol):
     """Protocol for operation results"""
     def is_ok(self) -> bool:
         """Returns True if successful (no errors)"""
+
+
+class Ok(Result):
+    """Singleton success marker without value"""
+    __slots__ = ()
+
+    def is_ok(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return "OK"
+
+
+OK = Ok()
 
 
 class ErrorPropagator(Result, Protocol):
@@ -63,6 +78,16 @@ class ErrorPropagator(Result, Protocol):
         return res.value if hasattr(res, "value") else None
 
 
+class Error(ErrorPropagator):
+    """Error-only result container"""
+    __slots__ = ("msg", "err")
+    err: ExceptionGroup
+
+    def __init__(self, e: Exception, msg: str = "") -> None:
+        self.msg = msg
+        self.err = ExceptionGroup(self.msg, (e,))
+
+
 class Collector[T](ErrorPropagator, Protocol):
     """Protocol for value containers with error handling"""
     value: T
@@ -78,64 +103,41 @@ class Collector[T](ErrorPropagator, Protocol):
 
 
 @dataclass(slots=True)
-class Simple[T](Collector[Optional[T]], Result):
-    """Basic collector for optional values"""
+class Simple[T](Collector[T], Result):
+    """Basic collector for values"""
+    value: T
     msg: str = ""
-    value: Optional[T] = field(default=None)
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def set(self, res: "Simple[T]") -> Optional[T]:
+    def set(self, res: "Simple[T]") -> T:
         """set value and append errors"""
         self.value = res.value
-        return self.propagate_err(res)
-
-
-@dataclass(slots=True)
-class Bool(Collector[bool], Result):
-    """Specialized collector for boolean results"""
-    msg: str = ""
-    value: bool = field(default=False)
-    err: Optional[ExceptionGroup] = field(init=False, default=None)
-
-    def set(self, res: "Bool") -> bool:
-        """set value and append errors"""
-        self.value = res.value
-        self.propagate_err(res)
+        if res.err is not None:
+            self.append_err(res.err)
         return res.value
 
 
-class Ok(Result):
-    """Singleton success marker without value"""
-    __slots__ = ()
-
-    def is_ok(self) -> bool:
-        return True
-
-    def __str__(self) -> str:
-        return "OK"
+@dataclass(slots=True)
+class Bool(Simple[bool], Result):
+    """Specialized collector for boolean results"""
+    value: bool = field(default=False)
+    err: Optional[ExceptionGroup] = field(init=False, default=None)
 
 
-OK = Ok()
-
-
-class Error(ErrorPropagator):
-    """Error-only result container"""
-    __slots__ = ("msg", "err")
-    err: ExceptionGroup
-
-    def __init__(self, e: Exception, msg: str = "") -> None:
-        self.msg = msg
-        self.err = ExceptionGroup(self.msg, (e,))
+@dataclass(slots=True)
+class Option[T](Simple[Optional[T]], Result):
+    """Basic collector for optional values"""
+    value: Optional[T] = field(default=None)
 
 
 @dataclass(slots=True)
 class List[T](Collector[list[Optional[T | Ok]]], Result):
     """List collector with error accumulation"""
-    msg: str = ""
     value: list[Optional[T] | Ok] = field(init=False, default_factory=list)
+    msg: str = ""
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def append(self, res: Collector[Optional[T]] | Error | Ok) -> None:
+    def append(self, res:  Option[T] | Simple[T] | Error | Ok) -> None:
         """Appends result with rules:
         - For OK: adds OK marker
         - For Error: adds None and merges errors
@@ -151,6 +153,17 @@ class List[T](Collector[list[Optional[T | Ok]]], Result):
         else:
             self.value.append(res.value)
 
-    def __add__(self, other: Collector[Optional[T]] | Error | Ok) -> Self:
+    def __add__(self, other: Option[T] | Simple[T] | Error | Ok) -> Self:
         self.append(other)
         return self
+
+
+def is_ok[T](res: Collector[T] | Error) -> TypeGuard[Collector[T]]:
+    return res.is_ok()
+
+
+def has_value[T](res: Collector[T] | Error | Ok) -> TypeGuard[Collector[T]]:
+    return (
+        res.is_ok()
+        and res != OK
+    )

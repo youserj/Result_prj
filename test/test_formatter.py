@@ -1,11 +1,11 @@
 import unittest
-from src.StructResult.result import Simple, Error, List
+from src.StructResult.result import Option, Error, List
 from src.StructResult.formatter import format_eg
 
 
 class TestFormatEG(unittest.TestCase):
     def setUp(self) -> None:
-        self.simple_error = ValueError("Simple error")
+        self.simple_error = ValueError("Option error")
         self.nested_group = ExceptionGroup("Nested", [TypeError("Type error")])
 
         # Create a complex group with at least one exception in each subgroup
@@ -16,16 +16,16 @@ class TestFormatEG(unittest.TestCase):
         ])
 
         # Create test Result objects
-        self.simple_result = Simple[str](value="test")
+        self.simple_result = Option[str](value="test")
         self.error_result = Error(self.simple_error, msg="error occurred")
         self.list_result = List[int]()
-        self.list_result.append(Simple[int](value=42))
-        self.list_result.append(Simple[int](value=None))
+        self.list_result.append(Option[int](value=42))
+        self.list_result.append(Option[int](value=None))
 
     def test_basic_exception_group(self) -> None:
         eg = ExceptionGroup("Test", [self.simple_error])
         result = format_eg(eg)
-        expected = "Test (1 sub-exception):\n  - ValueError('Simple error')"
+        expected = "Test (1 sub-exception):\n  - ValueError('Option error')"
         self.assertEqual(result, expected)
 
     def test_nested_exception_group(self) -> None:
@@ -37,7 +37,7 @@ class TestFormatEG(unittest.TestCase):
         result = format_eg(self.complex_group)
         expected = (
             "Complex (3 sub-exceptions):\n"
-            "  - ValueError('Simple error')\n"
+            "  - ValueError('Option error')\n"
             "  Nested (1 sub-exception):\n"
             "    - TypeError('Type error')\n"
             "  With content (1 sub-exception):\n"
@@ -46,13 +46,13 @@ class TestFormatEG(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_with_result_protocol(self) -> None:
-        error_result = Simple[str]()
+        error_result = Option[str]()
         error_result.append_err(self.complex_group)
         if error_result.err is not None:
             result = format_eg(error_result.err)
             expected = (
                 "Complex (3 sub-exceptions):\n"
-                "  - ValueError('Simple error')\n"
+                "  - ValueError('Option error')\n"
                 "  Nested (1 sub-exception):\n"
                 "    - TypeError('Type error')\n"
                 "  With content (1 sub-exception):\n"
@@ -69,19 +69,19 @@ class TestFormatEG(unittest.TestCase):
             show_count=False,
             repr_fn=lambda e: f"{type(e).__name__}: {str(e)}"
         )
-        expected = "Custom:\n    * ValueError: Simple error"
+        expected = "Custom:\n    * ValueError: Option error"
         self.assertEqual(result, expected)
 
     def test_with_list_result_errors(self) -> None:
         list_result = List[int]()
-        list_result.append(Simple[int](value=1))
-        error_result = Simple[int](value=2)
+        list_result.append(Option[int](value=1))
+        error_result = Option[int](value=2)
         error_result.append_err(self.simple_error)
         list_result.append(error_result)
 
         if list_result.err:
             result = format_eg(list_result.err)
-            expected = " (1 sub-exception):\n  - ValueError('Simple error')"
+            expected = " (1 sub-exception):\n  - ValueError('Option error')"
             self.assertTrue(result.endswith(expected))
 
     def test_protocol_compatibility(self) -> None:

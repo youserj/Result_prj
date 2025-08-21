@@ -1,5 +1,6 @@
 import timeit
-from src.StructResult.result import OK, Error, Simple
+from typing import Any, TypeGuard
+from src.StructResult.result import Ok, Error, Simple, Result, Collector
 
 # test data
 ok_result = Simple(value=1)
@@ -7,13 +8,19 @@ error_result = Error(ValueError("fail"))
 
 
 # var 1: if not result.is_ok()
-def check_is_ok(result):
+def check_is_ok[T](result: Collector[T] | Error | Ok) -> TypeGuard[Collector[T] | Ok]:
     return not result.is_ok()
 
 
 # var 2: if not isinstance(result, Error)
-def check_isinstance(result):
+def check_isinstance(result: Result) -> bool:
     return not isinstance(result, Error)
+
+
+def foo(res: Simple[Any] | Error) -> None:
+    if not check_is_ok(res):
+        raise ValueError()
+    print(res.value)
 
 
 # OK_result speed
