@@ -11,7 +11,7 @@ class TestResultSystem(unittest.TestCase):
 
     def test_error_creation(self) -> None:
         exc = ValueError("test error")
-        err = Error(exc, "context")
+        err = Error.from_e(exc, "context")
         self.assertFalse(err.is_ok())
         self.assertIsNotNone(err.err)
         self.assertEqual(err.msg, "context")
@@ -53,7 +53,7 @@ class TestResultSystem(unittest.TestCase):
     def test_list_collector(self) -> None:
         lst = List[int]("collection")
         lst.append(Option[int](42, "item1"))
-        lst.append(Error(ValueError("bad value"), "item2"))
+        lst.append(Error.from_e(ValueError("bad value"), "item2"))
         lst.append(OK)
         lst.append(Option[int](100, "item3"))
         self.assertEqual(len(lst.value), 4)
@@ -66,7 +66,7 @@ class TestResultSystem(unittest.TestCase):
 
     def test_list_operator_overload(self) -> None:
         lst = List[str]("test") + Option[str]("hello", "first")
-        lst += Error(TypeError("type error"), "second")
+        lst += Error.from_e(TypeError("type error"), "second")
         self.assertEqual(len(lst.value), 2)
         self.assertEqual(lst.value[0], "hello")
         self.assertFalse(lst.is_ok())
@@ -138,7 +138,7 @@ class TestResultSystem(unittest.TestCase):
         lst: List[str | int] = List("mixed")
         lst.append(Option(42, "int"))
         lst.append(Option("hello", "str"))
-        lst.append(Error(ValueError("error"), "error"))
+        lst.append(Error.from_e(ValueError("error"), "error"))
         self.assertEqual(len(lst.value), 3)
         self.assertEqual(lst.value[0], 42)
         self.assertEqual(lst.value[1], "hello")
@@ -162,7 +162,7 @@ class TestResultSystem(unittest.TestCase):
         main = List[int]("combined workflow")
         main += Option[int](10, "op1")
         main += Option[int](20, "op2")
-        main += Error(ValueError("invalid value"), "op3")
+        main += Error.from_e(ValueError("invalid value"), "op3")
         main += Option[int](30, "op4")
         self.assertEqual(len(main.value), 4)
         self.assertEqual(main.value[0], 10)

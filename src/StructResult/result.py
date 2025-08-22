@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any, TypeGuard
+from typing import Optional, Self, Protocol, Iterator, Any
 
 """
 Functional error handling system with:
@@ -22,8 +22,6 @@ class Result(Protocol):
 
 class Ok(Result):
     """Singleton success marker without value"""
-    __slots__ = ()
-
     def is_ok(self) -> bool:
         return True
 
@@ -68,7 +66,7 @@ class ErrorPropagator(Result, Protocol):
                 self.err = ExceptionGroup(self.msg, (e, self.err))
         return self
 
-    def propagate_err[T](self, res: "Collector[T]") -> Optional[T]:
+    def propagate_err[T](self, res: "Collector[T] | ErrorAccumulator") -> Optional[T]:
         """Merges errors from another result and returns its value:
         1. If res has errors - merges them into current
         2. Returns res's value (if exists)
@@ -78,14 +76,28 @@ class ErrorPropagator(Result, Protocol):
         return res.value if hasattr(res, "value") else None
 
 
+@dataclass(slots=True)
 class Error(ErrorPropagator):
     """Error-only result container"""
-    __slots__ = ("msg", "err")
     err: ExceptionGroup
+    msg: str = ""
 
-    def __init__(self, e: Exception, msg: str = "") -> None:
-        self.msg = msg
-        self.err = ExceptionGroup(self.msg, (e,))
+    @classmethod
+    def from_e(cls, e: Exception, msg: str = "") -> Self:
+        return cls(ExceptionGroup(msg, (e,)), msg)
+
+
+@dataclass(slots=True)
+class ErrorAccumulator(ErrorPropagator):
+    """Base container for error propagation with status conversion"""
+    err: Optional[ExceptionGroup] = field(init=False, default=None)
+    msg: str = ""
+
+    @property
+    def result(self) -> Ok | Error:
+        if self.err is None:
+            return OK
+        return Error(self.err)
 
 
 class Collector[T](ErrorPropagator, Protocol):
@@ -156,14 +168,3 @@ class List[T](Collector[list[Optional[T | Ok]]], Result):
     def __add__(self, other: Option[T] | Simple[T] | Error | Ok) -> Self:
         self.append(other)
         return self
-
-
-def is_ok[T](res: Collector[T] | Error) -> TypeGuard[Collector[T]]:
-    return res.is_ok()
-
-
-def has_value[T](res: Collector[T] | Error | Ok) -> TypeGuard[Collector[T]]:
-    return (
-        res.is_ok()
-        and res != OK
-    )
