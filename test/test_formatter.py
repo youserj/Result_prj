@@ -1,5 +1,5 @@
 import unittest
-from src.StructResult.result import Option, Error, List
+from src.StructResult.result import Option, Error, List, Simple
 from src.StructResult.formatter import format_eg
 
 
@@ -16,11 +16,11 @@ class TestFormatEG(unittest.TestCase):
         ])
 
         # Create test Result objects
-        self.simple_result = Option[str](value="test")
-        self.error_result = Error(self.simple_error, msg="error occurred")
+        self.simple_result = Option("test")
+        self.error_result = Error.from_e(self.simple_error, msg="error occurred")
         self.list_result = List[int]()
-        self.list_result.append(Option[int](value=42))
-        self.list_result.append(Option[int](value=None))
+        self.list_result.append(Simple(42))
+        self.list_result.append(Option())
 
     def test_basic_exception_group(self) -> None:
         eg = ExceptionGroup("Test", [self.simple_error])
@@ -46,7 +46,7 @@ class TestFormatEG(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_with_result_protocol(self) -> None:
-        error_result = Option[str]()
+        error_result: Option[int] = Option()
         error_result.append_err(self.complex_group)
         if error_result.err is not None:
             result = format_eg(error_result.err)
@@ -74,9 +74,9 @@ class TestFormatEG(unittest.TestCase):
 
     def test_with_list_result_errors(self) -> None:
         list_result = List[int]()
-        list_result.append(Option[int](value=1))
-        error_result = Option[int](value=2)
-        error_result.append_err(self.simple_error)
+        list_result.append(Simple(1))
+        error_result = Simple(2)
+        error_result.append_e(self.simple_error)
         list_result.append(error_result)
 
         if list_result.err:
@@ -85,7 +85,7 @@ class TestFormatEG(unittest.TestCase):
             self.assertTrue(result.endswith(expected))
 
     def test_protocol_compatibility(self) -> None:
-        error_result = Error(self.complex_group, msg="test")
+        error_result = Error(self.complex_group).with_msg(msg="test")
 
         self.assertIsInstance(error_result.err, BaseExceptionGroup)
         if error_result.err is not None:

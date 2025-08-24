@@ -14,35 +14,34 @@ class TestResultSystem(unittest.TestCase):
         err = Error.from_e(exc, "context")
         self.assertFalse(err.is_ok())
         self.assertIsNotNone(err.err)
-        self.assertEqual(err.msg, "context")
         self.assertEqual(len(err.err.exceptions), 1)
         self.assertIsInstance(err.err.exceptions[0], ValueError)
 
     def test_simple_success(self) -> None:
-        res = Option[str]("success", "test")
+        res: Option[str] = Option("success")
         self.assertTrue(res.is_ok())
         self.assertEqual(res.unwrap(), "success")
         self.assertIsNone(res.err)
 
     def test_simple_failure(self) -> None:
         exc = TypeError("type error")
-        res = Option[str]("test").append_err(exc)
+        res: Option[str] = Option("test").append_e(exc)
         self.assertFalse(res.is_ok())
         self.assertIsNotNone(res.err)
         with self.assertRaises(ExceptionGroup):
             res.unwrap()
 
     def test_bool_type(self) -> None:
-        true_res = Bool(value=True, msg="test")
-        false_res = Bool(value=False, msg="test")
+        true_res = Bool(value=True)
+        false_res = Bool(value=False)
         self.assertTrue(true_res.unwrap())
         self.assertFalse(false_res.unwrap())
 
     def test_error_propagation(self) -> None:
         exc1 = RuntimeError("error 1")
         exc2 = KeyError("error 2")
-        res1 = Option[int](msg="op1").append_err(exc1)
-        res2 = Option[int](msg="op2").append_err(exc2)
+        res1: Option[int] = Option().append_e(exc1, "op1")
+        res2: Option[int] = Option().append_e(exc2, "op2")
         res1.propagate_err(res2)
         self.assertFalse(res1.is_ok())
         if res1.err is not None:
@@ -51,21 +50,21 @@ class TestResultSystem(unittest.TestCase):
             self.assertIsInstance(res1.err.exceptions[1].exceptions[0], KeyError)
 
     def test_list_collector(self) -> None:
-        lst = List[int]("collection")
-        lst.append(Option[int](42, "item1"))
+        lst: List[int] = List()
+        lst.append(Option(42))
         lst.append(Error.from_e(ValueError("bad value"), "item2"))
         lst.append(OK)
-        lst.append(Option[int](100, "item3"))
+        lst.append(Option(100))
         self.assertEqual(len(lst.value), 4)
         self.assertEqual(lst.value[0], 42)
         self.assertIsInstance(lst.value[2], Ok)
         self.assertEqual(lst.value[3], 100)
         self.assertFalse(lst.is_ok())
         self.assertEqual(len(lst.err.exceptions), 1)
-        self.assertIsInstance(lst.err.exceptions[0].exceptions[0], ValueError)
+        self.assertIsInstance(lst.err.exceptions[0], ValueError)
 
     def test_list_operator_overload(self) -> None:
-        lst = List[str]("test") + Option[str]("hello", "first")
+        lst: List[str] = List[str]() + Option("hello")
         lst += Error.from_e(TypeError("type error"), "second")
         self.assertEqual(len(lst.value), 2)
         self.assertEqual(lst.value[0], "hello")
@@ -75,8 +74,8 @@ class TestResultSystem(unittest.TestCase):
         exc1 = ValueError("val1")
         exc2 = TypeError("type1")
         exc3 = KeyError("key1")
-        res1: Option[object] = Option(msg="group1").append_err(exc1).append_err(exc2)
-        res2: Option[object] = Option(msg="group1").append_err(exc3)
+        res1: Option[object] = Option().append_e(exc1, "group1").append_e(exc2)
+        res2: Option[object] = Option().append_e(exc3, "group1")
         res1.propagate_err(res2)
         self.assertEqual(len(res1.err.exceptions), 3)
         self.assertEqual(res1.err.message, "group1")
@@ -84,35 +83,35 @@ class TestResultSystem(unittest.TestCase):
     def test_different_error_groups(self) -> None:
         exc1 = ValueError("val1")
         exc2 = TypeError("type1")
-        res1: Option[object] = Option(msg="group1").append_err(exc1)
-        res2: Option[object] = Option(msg="group2").append_err(exc2)
+        res1: Option[object] = Option().append_e(exc1, "group1")
+        res2: Option[object] = Option().append_e(exc2, "group2")
         res1.propagate_err(res2)
         self.assertEqual(len(res1.err.exceptions), 2)
         self.assertIsInstance(res1.err.exceptions[1], ExceptionGroup)
 
     def test_set_operation(self) -> None:
-        main: Option[str] = Option(msg="main")
-        other: Option[str] = Option("data", "other")
+        main: Option[str] = Option()
+        other: Option[str] = Option("data")
         result = main.set(other)
         self.assertEqual(main.value, "data")
         self.assertEqual(result, "data")
         self.assertTrue(main.is_ok())
 
     def test_bool_set_operation(self) -> None:
-        main = Bool(msg="main")
-        other = Bool(value=True, msg="other")
+        main = Bool()
+        other = Bool(value=True)
         result = main.set(other)
         self.assertTrue(main.value)
         self.assertTrue(result)
 
     def test_simple_none_value(self) -> None:
-        res: Option[int] = Option(msg="test")
+        res: Option[int] = Option()
         self.assertTrue(res.is_ok())
         self.assertIsNone(res.unwrap())
 
     def test_bool_false_with_error(self) -> None:
-        res = Bool(value=False, msg="test")
-        res.append_err(ValueError("bool error"))
+        res = Bool(value=False)
+        res.append_e(ValueError("bool error"))
         self.assertFalse(res.value)
         self.assertFalse(res.is_ok())
         with self.assertRaises(ExceptionGroup):
@@ -121,23 +120,23 @@ class TestResultSystem(unittest.TestCase):
     def test_nested_exception_groups(self) -> None:
         inner_group = ExceptionGroup("inner", [ValueError("v1"), TypeError("t1")])
         outer_group = ExceptionGroup("outer", [inner_group, KeyError("k1")])
-        res = Option[int](msg="test").append_err(outer_group)
+        res: Option[int] = Option().append_err(outer_group)
         if res.err is not None:
-            self.assertEqual(len(res.err.exceptions), 1)
+            self.assertEqual(len(res.err.exceptions), 2)
             self.assertIsInstance(res.err.exceptions[0], ExceptionGroup)
-            self.assertEqual(res.err.exceptions[0].message, "outer")
-            self.assertEqual(res.err.exceptions[0].exceptions[0].message, "inner")
+            self.assertEqual(res.err.exceptions[0].message, "inner")
+            self.assertEqual(res.err.message, "outer")
 
     def test_list_empty(self) -> None:
-        lst = List[str]("empty")
+        lst: List[str] = List()
         self.assertTrue(lst.is_ok())
         self.assertEqual(len(lst.value), 0)
         self.assertIsNone(lst.err)
 
     def test_list_mixed_types(self) -> None:
-        lst: List[str | int] = List("mixed")
-        lst.append(Option(42, "int"))
-        lst.append(Option("hello", "str"))
+        lst: List[str | int] = List()
+        lst.append(Option(42))
+        lst.append(Option("hello"))
         lst.append(Error.from_e(ValueError("error"), "error"))
         self.assertEqual(len(lst.value), 3)
         self.assertEqual(lst.value[0], 42)
@@ -145,25 +144,25 @@ class TestResultSystem(unittest.TestCase):
         self.assertIsInstance(lst.value[2], type(None))
 
     def test_propagate_none(self) -> None:
-        res = Option[int](42, "main")
-        res.propagate_err(Option[int](msg="other"))
+        res: Option[int] = Option(42)
+        res.propagate_err(Option())
         self.assertTrue(res.is_ok())
         self.assertEqual(res.unwrap(), 42)
 
     def test_type_hints(self) -> None:
         def processor() -> Option[str]:
-            return Option[str]("result", "processor")
+            return Option("result")
 
         result = processor()
         value: str | None = result.unwrap()
         self.assertEqual(value, "result")
 
     def test_combined_workflow(self) -> None:
-        main = List[int]("combined workflow")
-        main += Option[int](10, "op1")
-        main += Option[int](20, "op2")
+        main: List[int] = List()
+        main += Option(10)
+        main += Option(20)
         main += Error.from_e(ValueError("invalid value"), "op3")
-        main += Option[int](30, "op4")
+        main += Option(30)
         self.assertEqual(len(main.value), 4)
         self.assertEqual(main.value[0], 10)
         self.assertEqual(main.value[1], 20)
@@ -174,10 +173,10 @@ class TestResultSystem(unittest.TestCase):
             main.unwrap()
 
     def test_multiple_propagations(self) -> None:
-        res1: Option[int] = Option(msg="first").append_err(ValueError("v1"))
-        res2: Option[int] = Option(msg="second").append_err(TypeError("t1"))
-        res3: Option[int] = Option(msg="third").append_err(KeyError("k1"))
-        main: Option[int] = Option(msg="main")
+        res1: Option[int] = Option().append_e(ValueError("v1"), msg="first")
+        res2: Option[int] = Option().append_e(TypeError("t1"), msg="second")
+        res3: Option[int] = Option().append_e(KeyError("k1"), msg="third")
+        main: Option[int] = Option()
         main.propagate_err(res1)
         main.propagate_err(res2)
         main.propagate_err(res3)
@@ -185,29 +184,29 @@ class TestResultSystem(unittest.TestCase):
 
     @patch.object(Option, "append_err")
     def test_propagate_err_calls(self, mock_append: Any) -> None:
-        err_res = Option[int](msg="error")
+        err_res: Option[int] = Option()
         err_res.err = ExceptionGroup("error", [ValueError("test")])
-        main = Option[int](msg="main")
+        main: Option[int] = Option()
         main.propagate_err(err_res)
         mock_append.assert_called_once_with(err_res.err)
 
     def test_iterator_protocol(self) -> None:
-        res = Option[str]("test", "iter")
+        res: Option[str] = Option("test")
         values = list(res)
         self.assertEqual(len(values), 2)
         self.assertEqual(values[0], "test")
         self.assertIsNone(values[1])
 
     def test_bool_truthiness(self) -> None:
-        true_res = Bool(value=True, msg="true")
-        false_res = Bool(value=False, msg="false")
+        true_res = Bool(value=True)
+        false_res = Bool(value=False)
         self.assertTrue(true_res.value)
         self.assertFalse(false_res.value)
         self.assertTrue(bool(true_res.unwrap()))
         self.assertFalse(bool(false_res.unwrap()))
 
     def test_equal(self) -> None:
-        res: Option[str] = Option(msg="1")
+        res: Option[str] = Option()
         group = ExceptionGroup("1", (ValueError("1"),))
         res.append_err(group)
         self.assertEqual(res.err, group)

@@ -28,6 +28,10 @@ class Ok(Result):
     def __str__(self) -> str:
         return "OK"
 
+    @property
+    def value(self) -> "Ok":
+        return OK
+
 
 OK = Ok()
 
@@ -35,35 +39,32 @@ OK = Ok()
 class ErrorPropagator(Result, Protocol):
     """Protocol for error-accumulating types"""
     err: Optional[ExceptionGroup]
-    msg: str
 
     def is_ok(self) -> bool:
         return self.err is None
 
-    def append_err(self, e: Exception | ExceptionGroup) -> Self:
+    def append_e(self, e: Exception, msg: str = "") -> Self:
+        """adds to existing group or creates new one"""
+        if self.err is None:
+            self.err = ExceptionGroup(msg, (e,))
+        elif msg == self.err.message:
+            self.err = ExceptionGroup(msg, (*self.err.exceptions, e))
+        else:
+            self.err = ExceptionGroup(msg, (e, self.err))
+        return self
+
+    def append_err(self, err: ExceptionGroup) -> Self:
         """Adds an exception or exception group to the collector.
         Rules:
         - For ExceptionGroup with matching message: merges exceptions
         - For ExceptionGroup with different message: preserves structure
-        - For single Exception: adds to existing group or creates new one
         """
-        if isinstance(e, ExceptionGroup):
-            if self.err is None:
-                if self.msg == e.message:
-                    self.err = e
-                else:
-                    self.err = ExceptionGroup(self.msg, (e,))
-            elif self.msg == e.message:
-                self.err = ExceptionGroup(self.msg, (*self.err.exceptions, *e.exceptions))
-            else:
-                self.err = ExceptionGroup(self.msg, (*self.err.exceptions, e))
-        else:  # for Exception
-            if self.err is None:
-                self.err = ExceptionGroup(self.msg, (e,))
-            elif self.msg == self.err.message:
-                self.err = ExceptionGroup(self.msg, (*self.err.exceptions, e))
-            else:
-                self.err = ExceptionGroup(self.msg, (e, self.err))
+        if self.err is None:
+            self.err = err
+        elif self.err.message == err.message:
+            self.err = ExceptionGroup(err.message, (*self.err.exceptions, *err.exceptions))
+        else:
+            self.err = ExceptionGroup(err.message, (*self.err.exceptions, err))
         return self
 
     def propagate_err[T](self, res: "Collector[T] | ErrorAccumulator") -> Optional[T]:
@@ -80,18 +81,22 @@ class ErrorPropagator(Result, Protocol):
 class Error(ErrorPropagator):
     """Error-only result container"""
     err: ExceptionGroup
-    msg: str = ""
 
     @classmethod
-    def from_e(cls, e: Exception, msg: str = "") -> Self:
-        return cls(ExceptionGroup(msg, (e,)), msg)
+    def from_e(cls, e: Exception, msg: str = "") -> "Error":
+        return cls(ExceptionGroup(msg, (e,)))
+
+    def with_msg(self, msg: str) -> "Error":
+        """Returns a new Error instance with updated message context
+        while preserving the original exception structure
+        """
+        return Error(err=ExceptionGroup(msg, (self.err,)))
 
 
 @dataclass(slots=True)
 class ErrorAccumulator(ErrorPropagator):
     """Base container for error propagation with status conversion"""
     err: Optional[ExceptionGroup] = field(init=False, default=None)
-    msg: str = ""
 
     @property
     def result(self) -> Ok | Error:
@@ -118,7 +123,6 @@ class Collector[T](ErrorPropagator, Protocol):
 class Simple[T](Collector[T], Result):
     """Basic collector for values"""
     value: T
-    msg: str = ""
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
     def set(self, res: "Simple[T]") -> T:
@@ -146,7 +150,6 @@ class Option[T](Simple[Optional[T]], Result):
 class List[T](Collector[list[Optional[T | Ok]]], Result):
     """List collector with error accumulation"""
     value: list[Optional[T] | Ok] = field(init=False, default_factory=list)
-    msg: str = ""
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
     def append(self, res:  Option[T] | Simple[T] | Error | Ok) -> None:
