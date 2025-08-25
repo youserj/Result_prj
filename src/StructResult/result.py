@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any
+from typing import Optional, Self, Protocol, Iterator, Any, Never, TypeAlias
 
 """
 Functional error handling system with:
@@ -19,6 +19,9 @@ class Result(Protocol):
     def is_ok(self) -> bool:
         """Returns True if successful (no errors)"""
 
+    def unwrap(self) -> Any:
+        """Returns value or raises exception if errors exist"""
+
 
 class Ok(Result):
     """Singleton success marker without value"""
@@ -30,6 +33,10 @@ class Ok(Result):
 
     @property
     def value(self) -> "Ok":
+        return OK
+
+    def unwrap(self) -> "Ok":
+        """Always return OK"""
         return OK
 
 
@@ -91,6 +98,10 @@ class Error(ErrorPropagator):
         while preserving the original exception structure
         """
         return Error(err=ExceptionGroup(msg, (self.err,)))
+
+    def unwrap(self) -> Never:
+        """Always raises exception"""
+        raise self.err
 
 
 @dataclass(slots=True)
@@ -171,3 +182,11 @@ class List[T](Collector[list[Optional[T | Ok]]], Result):
     def __add__(self, other: Option[T] | Simple[T] | Error | Ok) -> Self:
         self.append(other)
         return self
+
+
+type SimpleOrError[T: Any] = Simple[T] | Error
+
+
+__all__ = [
+    "SimpleOrError"
+]

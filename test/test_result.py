@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from typing import Any
-from src.StructResult.result import Option, Bool, Ok, OK, Error, List
+from src.StructResult.result import Option, Bool, Ok, OK, Error, List, SimpleOrError, Simple
 
 
 class TestResultSystem(unittest.TestCase):
@@ -210,3 +210,10 @@ class TestResultSystem(unittest.TestCase):
         group = ExceptionGroup("1", (ValueError("1"),))
         res.append_err(group)
         self.assertEqual(res.err, group)
+
+    def test_SimpleOrError(self) -> None:
+        def foo(val: int) -> SimpleOrError[str]:
+            if val < 0:
+                return Error.from_e(ValueError())
+            else:
+                return Simple(1)
