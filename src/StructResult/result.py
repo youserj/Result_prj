@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any, Never, TypeAlias
+from typing import Optional, Self, Protocol, Iterator, Any, Never, TypeGuard
 
 """
 Functional error handling system with:
@@ -111,9 +111,20 @@ class ErrorAccumulator(ErrorPropagator):
 
     @property
     def result(self) -> Ok | Error:
+        """
+        Finalize error accumulation and return simple Result.
+        Converts this accumulator to either:
+        - Ok: if no errors occurred
+        - Error: with accumulated ExceptionGroup otherwise
+        After conversion, this accumulator should not be used further.
+        """
         if self.err is None:
             return OK
         return Error(self.err)
+
+    def unwrap(self) -> Never:
+        """ErrorAccumulator is not meant to be unwrapped directly"""
+        raise RuntimeError("ErrorAccumulator should be converted to Result first")
 
 
 class Collector[T](ErrorPropagator, Protocol):

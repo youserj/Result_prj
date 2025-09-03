@@ -212,7 +212,7 @@ class TestResultSystem(unittest.TestCase):
         self.assertEqual(res.err, group)
 
     def test_SimpleOrError(self) -> None:
-        def foo(val: int) -> SimpleOrError[str]:
+        def foo(val: int) -> SimpleOrError[int]:
             if val < 0:
                 return Error.from_e(ValueError())
             else:
