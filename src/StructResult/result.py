@@ -122,19 +122,24 @@ class ErrorAccumulator(ErrorPropagator):
             return OK
         return Error(self.err)
 
-    def as_error(self) -> Error:
+    def as_error(self, e: Optional[Exception] = None, msg: str = "") -> Error:
         """
-        Convert accumulated errors to Error instance.
+        Convert accumulated errors to Error instance, optionally adding a final error.
+
+        Args:
+            e: Optional final exception to add before conversion
+            msg: Message for the exception group (if adding new error)
 
         Returns:
             Error: Contains ExceptionGroup with all accumulated errors.
 
         Raises:
-            RuntimeError: If no errors were accumulated (prevents silent failures)
+            RuntimeError: If no errors were accumulated and no final error provided
 
-        Use this when you expect errors to be present and want to ensure
-        the accumulation actually captured issues.
+        Useful for adding a contextual error before final conversion.
         """
+        if e is not None:
+            self.append_e(e, msg)
         if self.err is None:
             raise RuntimeError("Cannot convert to Error: no errors were accumulated")
         return Error(self.err)
