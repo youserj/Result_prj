@@ -122,6 +122,23 @@ class ErrorAccumulator(ErrorPropagator):
             return OK
         return Error(self.err)
 
+    def as_error(self) -> Error:
+        """
+        Convert accumulated errors to Error instance.
+
+        Returns:
+            Error: Contains ExceptionGroup with all accumulated errors.
+
+        Raises:
+            RuntimeError: If no errors were accumulated (prevents silent failures)
+
+        Use this when you expect errors to be present and want to ensure
+        the accumulation actually captured issues.
+        """
+        if self.err is None:
+            raise RuntimeError("Cannot convert to Error: no errors were accumulated")
+        return Error(self.err)
+
     def unwrap(self) -> Never:
         """ErrorAccumulator is not meant to be unwrapped directly"""
         raise RuntimeError("ErrorAccumulator should be converted to Result first")
