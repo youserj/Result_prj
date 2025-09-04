@@ -127,6 +127,28 @@ class StrictOk(ErrorPropagator):
             return OK
         raise self.err
 
+    def as_error(self, e: Optional[Exception] = None, msg: str = "") -> Error:
+        """
+        Convert accumulated errors to Error instance, optionally adding a final error.
+
+        Args:
+            e: Optional final exception to add before conversion
+            msg: Message for the exception group (if adding new error)
+
+        Returns:
+            Error: Contains ExceptionGroup with all accumulated errors.
+
+        Raises:
+            RuntimeError: If no errors were accumulated and no final error provided
+
+        Useful for adding a contextual error before final conversion.
+        """
+        if e is not None:
+            self.append_e(e, msg)
+        if self.err is None:
+            raise RuntimeError("Cannot convert to Error: no errors were accumulated")
+        return Error(self.err)
+
 
 # todo: maybe will replaced by StrictOK
 @dataclass(slots=True)
