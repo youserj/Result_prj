@@ -43,6 +43,13 @@ class Ok(Result):
 OK = Ok()
 
 
+class Null:
+    """Non value result marker"""
+
+
+NULL = Null()
+
+
 class ErrorPropagator(Result, Protocol):
     """Protocol for error-accumulating types"""
     err: Optional[ExceptionGroup]
@@ -74,14 +81,14 @@ class ErrorPropagator(Result, Protocol):
             self.err = ExceptionGroup(err.message, (*self.err.exceptions, err))
         return self
 
-    def propagate_err[T](self, res: "Collector[T] | ErrorAccumulator") -> Optional[T]:
+    def propagate_err[T](self, res: "Collector[T] | ErrorAccumulator") -> T | Null:
         """Merges errors from another result and returns its value:
         1. If res has errors - merges them into current
         2. Returns res's value (if exists)
         """
         if res.err is not None:
             self.append_err(res.err)
-        return res.value if hasattr(res, "value") else None
+        return res.value if hasattr(res, "value") else NULL
 
 
 @dataclass(slots=True)
