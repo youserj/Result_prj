@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any, Never, TypeGuard
+from typing import Optional, Self, Protocol, Iterator, Any, Never
 
 """
 Functional error handling system with:
@@ -104,6 +104,31 @@ class Error(ErrorPropagator):
         raise self.err
 
 
+@dataclass(slots=True)
+class StrictOk(ErrorPropagator):
+    """
+    Represents a strictly successful operation that must have no errors.
+
+    Unlike the simple Ok singleton, StrictOk can accumulate errors but will
+    only be considered truly successful if no errors were accumulated.
+
+    Use this when you need to distinguish between:
+    - Pure success (Ok): no errors possible
+    - Validated success (StrictOk): success only if no errors detected
+
+    Examples:
+        Data validation, sanitization, or any operation where errors
+        should be tracked but don't necessarily constitute failure.
+    """
+    err: Optional[ExceptionGroup] = field(init=False, default=None)
+
+    def unwrap(self) -> Ok:
+        if self.err is None:
+            return OK
+        raise self.err
+
+
+# todo: maybe will replaced by StrictOK
 @dataclass(slots=True)
 class ErrorAccumulator(ErrorPropagator):
     """Base container for error propagation with status conversion"""
