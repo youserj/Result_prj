@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any, Never
+from typing import Optional, Self, Protocol, Iterator, Any, Never, ClassVar, Final
 
 """
 Functional error handling system with:
@@ -35,6 +35,10 @@ class Ok(Result):
     def value(self) -> "Ok":
         return OK
 
+    @property
+    def err(self) -> None:
+        return None
+
     def unwrap(self) -> "Ok":
         """Always return OK"""
         return OK
@@ -45,6 +49,8 @@ OK = Ok()
 
 class Null:
     """Non value result marker"""
+    def __str__(self) -> str:
+        return "NULL"
 
 
 NULL = Null()
@@ -81,7 +87,7 @@ class ErrorPropagator(Result, Protocol):
             self.err = ExceptionGroup(err.message, (*self.err.exceptions, err))
         return self
 
-    def propagate_err[T](self, res: "Collector[T] | ErrorAccumulator") -> T | Null:
+    def propagate_err[T](self, res: "Collector[T] | ErrorAccumulator | Ok") -> T | Null | Ok:
         """Merges errors from another result and returns its value:
         1. If res has errors - merges them into current
         2. Returns res's value (if exists)
