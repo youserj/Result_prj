@@ -274,6 +274,32 @@ class List[T](Collector[list[Optional[T | Ok]]], Result):
 type SimpleOrError[T: Any] = Simple[T] | Error
 
 
+class Sequence[*Ts](Collector[tuple[*Ts]], Result):
+    """
+    A strictly-typed heterogeneous sequence container with error handling capabilities.
+    Sequence preserves the exact type and order of elements at the type level using
+    variadic generics, while providing error accumulation functionality inherited
+    from the error handling system.
+    Key features:
+    - Type-safe heterogeneous collections: Sequence[int, str, bool] for (1, "hello", True)
+    - Error propagation: Accumulates and manages exceptions through ExceptionGroup
+    - Protocol compliance: Implements Collector and Result protocols for interoperability
+    Examples:
+        >>> seq = Sequence(1, "hello", True)  # Inferred as Sequence[int, str, bool]
+        >>> seq.value  # (1, "hello", True)
+        >>> seq.unwrap()  # Type-safe tuple unpacking
+
+        >>> error_seq = Sequence(1, "test", err=ExceptionGroup("error", [ValueError()]))
+        >>> seq.is_ok()  # False
+    """
+    value: tuple[*Ts]
+    err: Optional[ExceptionGroup]
+
+    def __init__(self, *values: *Ts, err: Optional[ExceptionGroup] = None):
+        self.value = values
+        self.err = err
+
+
 __all__ = [
     "SimpleOrError"
 ]

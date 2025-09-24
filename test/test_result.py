@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from typing import Any
-from src.StructResult.result import Option, Bool, Ok, OK, Error, List, SimpleOrError, Simple
+from src.StructResult.result import Option, Bool, Ok, OK, Error, List, SimpleOrError, Simple, Sequence
 
 
 class TestResultSystem(unittest.TestCase):
@@ -217,3 +217,10 @@ class TestResultSystem(unittest.TestCase):
                 return Error.from_e(ValueError())
             else:
                 return Simple(1)
+
+    def test_Sequence(self) -> None:
+        res: Sequence[int, str] = Sequence(1, "2").append_e(ValueError(), "er")
+        z: int = res.value[0]
+        x: str = res.value[1]
+        print(res)
+        print(res.is_ok())
