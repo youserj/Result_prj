@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from typing import Any
-from src.StructResult.result import Option, Bool, Ok, OK, Error, List, SimpleOrError, Simple, Sequence
+from src.StructResult.result import Option, Bool, Ok, OK, Error, List, SimpleOrError, Simple, Sequence, Null
 
 
 class TestResultSystem(unittest.TestCase):
@@ -141,7 +141,7 @@ class TestResultSystem(unittest.TestCase):
         self.assertEqual(len(lst.value), 3)
         self.assertEqual(lst.value[0], 42)
         self.assertEqual(lst.value[1], "hello")
-        self.assertIsInstance(lst.value[2], type(None))
+        self.assertIsInstance(lst.value[2], Null)
 
     def test_propagate_none(self) -> None:
         res: Option[int] = Option(42)
@@ -192,7 +192,7 @@ class TestResultSystem(unittest.TestCase):
 
     def test_iterator_protocol(self) -> None:
         res: Option[str] = Option("test")
-        values = list(res)
+        values = res.unpack()
         self.assertEqual(len(values), 2)
         self.assertEqual(values[0], "test")
         self.assertIsNone(values[1])

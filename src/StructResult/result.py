@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any, Never, ClassVar, Final
-
+from typing import Optional, Self, Protocol, Iterator, Any, Never, ClassVar, Final, TypeVar, overload
 """
 Functional error handling system with:
 - Result composition
@@ -15,6 +14,9 @@ Core concepts:
 
 
 class Result(Protocol):
+    value: Any
+    err: Optional[ExceptionGroup]
+
     """Protocol for operation results"""
     def is_ok(self) -> bool:
         """Returns True if successful (no errors)"""
@@ -24,6 +26,7 @@ class Result(Protocol):
 
 
 class Ok(Result):
+
     """Singleton success marker without value"""
     def is_ok(self) -> bool:
         return True
@@ -35,13 +38,13 @@ class Ok(Result):
     def value(self) -> "Ok":
         return OK
 
-    @property
-    def err(self) -> None:
-        return None
-
     def unwrap(self) -> "Ok":
         """Always return OK"""
         return OK
+
+    @property
+    def err(self) -> None:  # type: ignore[override]
+        return None
 
 
 OK = Ok()
@@ -115,6 +118,10 @@ class Error(ErrorPropagator):
     def unwrap(self) -> Never:
         """Always raises exception"""
         raise self.err
+
+    @property
+    def value(self) -> Null:
+        return NULL
 
 
 @dataclass(slots=True)
@@ -213,8 +220,8 @@ class Collector[T](ErrorPropagator, Protocol):
     """Protocol for value containers with error handling"""
     value: T
 
-    def __iter__(self) -> Iterator[Any]:
-        return iter((self.value, self.err))
+    def unpack(self) -> tuple[T, Optional[ExceptionGroup]]:
+        return self.value, self.err
 
     def unwrap(self) -> T:
         """Returns value or raises exception if errors exist"""
@@ -251,26 +258,20 @@ class Option[T](Simple[Optional[T]], Result):
 
 
 @dataclass(slots=True)
-class List[T](Collector[list[Optional[T | Ok]]], Result):
+class List[T](Collector[list[Optional[T | Ok | Null]]], Result):
     """List collector with error accumulation"""
-    value: list[Optional[T] | Ok] = field(init=False, default_factory=list)
+    value: list[Optional[T] | Ok | Null] = field(init=False, default_factory=list)
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
-    def append(self, res:  Option[T] | Simple[T] | Error | Ok) -> None:
+    def append(self, res: Option[T] | Simple[T] | Error | Ok) -> None:
         """Appends result with rules:
         - For OK: adds OK marker
         - For Error: adds None and merges errors
         - For Collector: adds value and merges errors
         """
-        if isinstance(res, Ok):
-            self.value.append(OK)
-            return
         if res.err is not None:
             self.append_err(res.err)
-        if isinstance(res, Error):
-            self.value.append(None)
-        else:
-            self.value.append(res.value)
+        self.value.append(res.value)
 
     def __add__(self, other: Option[T] | Simple[T] | Error | Ok) -> Self:
         self.append(other)
@@ -278,6 +279,9 @@ class List[T](Collector[list[Optional[T | Ok]]], Result):
 
 
 type SimpleOrError[T: Any] = Simple[T] | Error
+
+
+T1 = TypeVar('T1')
 
 
 class Sequence[*Ts](Collector[tuple[*Ts]], Result):
@@ -304,6 +308,26 @@ class Sequence[*Ts](Collector[tuple[*Ts]], Result):
     def __init__(self, *values: *Ts, err: Optional[ExceptionGroup] = None):
         self.value = values
         self.err = err
+
+    @overload
+    def add(self, res: Collector[T1]) -> "Sequence[*Ts, T1]": ...
+
+    @overload
+    def add(self, res: Error) -> "Sequence[*Ts, Null]": ...
+
+    @overload
+    def add(self, res: Ok) -> "Sequence[*Ts, Ok]": ...
+
+    def add(self, res: Collector[T1] | Error | Ok) -> "Sequence[*Ts, Any]":
+        """Basic adding method"""
+        new_value = self.value + (res.value,)
+        new = Sequence(*new_value, err=self.err)
+        if res.err is not None:
+            new.append_err(res.err)
+        return new
+
+    def __str__(self) -> str:
+        return f"({", ".join(map(str, self.value))}){"" if not self.err else str(self.err)}"
 
 
 __all__ = [
