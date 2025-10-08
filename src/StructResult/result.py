@@ -24,6 +24,9 @@ class Result(Protocol):
     def unwrap(self) -> Any:
         """Returns value or raises exception if errors exist"""
 
+    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+        """"""
+
 
 class Ok(Result):
 
@@ -45,6 +48,9 @@ class Ok(Result):
     @property
     def err(self) -> None:  # type: ignore[override]
         return None
+
+    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+        return False
 
 
 OK = Ok()
@@ -99,6 +105,11 @@ class ErrorPropagator(Result, Protocol):
             self.append_err(res.err)
         return res.value if hasattr(res, "value") else NULL
 
+    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+        if self.err is None:
+            return False
+        return is_target(self.err, target_value, exception_type)
+
 
 @dataclass(slots=True)
 class Error(ErrorPropagator):
@@ -122,6 +133,9 @@ class Error(ErrorPropagator):
     @property
     def value(self) -> Null:
         return NULL
+
+    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+        return is_target(self.err, target_value, exception_type)
 
 
 @dataclass(slots=True)
@@ -170,6 +184,9 @@ class StrictOk(ErrorPropagator):
         return Error(self.err)
 
 
+type ValueOrError[T: Any] = T | Error
+
+
 # todo: maybe will replaced by StrictOK
 @dataclass(slots=True)
 class ErrorAccumulator(ErrorPropagator):
@@ -177,7 +194,7 @@ class ErrorAccumulator(ErrorPropagator):
     err: Optional[ExceptionGroup] = field(init=False, default=None)
 
     @property
-    def result(self) -> Ok | Error:
+    def result(self) -> ValueOrError[Ok]:
         """
         Finalize error accumulation and return simple Result.
         Converts this accumulator to either:
@@ -228,6 +245,13 @@ class Collector[T](ErrorPropagator, Protocol):
         if self.err:
             raise self.err
         return self.value
+
+    @property
+    def result(self) -> ValueOrError[T]:
+        """Finalize Collection to Value or Error"""
+        if self.err is None:
+            return self.value
+        return Error(self.err)
 
 
 @dataclass(slots=True)
@@ -280,7 +304,6 @@ class List[T](Collector[list[Optional[T | Ok | Null]]], Result):
 
 type SimpleOrError[T: Any] = Simple[T] | Error
 
-
 T1 = TypeVar('T1')
 
 
@@ -328,6 +351,28 @@ class Sequence[*Ts](Collector[tuple[*Ts]], Result):
 
     def __str__(self) -> str:
         return f"({", ".join(map(str, self.value))}){"" if not self.err else str(self.err)}"
+
+
+def is_target(exc_group: ExceptionGroup, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+    """
+    has target Exception in group
+    """
+    stack = [exc_group]
+    while stack:
+        current = stack.pop()
+        for exc in current.exceptions:
+            if isinstance(exc, ExceptionGroup):
+                stack.append(exc)
+            elif (
+                (
+                    exception_type is None
+                    or isinstance(exc, exception_type)
+                )
+                and exc.args
+                and exc.args[0] == target_value
+            ):
+                return True
+    return False
 
 
 __all__ = [

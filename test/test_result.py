@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from typing import Any
-from src.StructResult.result import Option, Bool, Ok, OK, Error, List, SimpleOrError, Simple, Sequence, Null
+from src.StructResult.result import Option, Bool, Ok, OK, Error, List, SimpleOrError, Simple, Sequence, Null, is_target
 
 
 class TestResultSystem(unittest.TestCase):

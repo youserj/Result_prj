@@ -231,9 +231,11 @@ class TestSequenceAdd(unittest.TestCase):
     def test_add_simple_value(self) -> None:
         """Test adding Simple value to sequence"""
         seq1: Sequence[int, str] = Sequence(1, "hello")
-        simple_val = Simple(3.14)
-
+        simple_val = Simple(3.14).append_e(ValueError(), "val error1")
         seq2 = seq1.add(simple_val)
+        res_err = Error.from_e(ValueError(), "val error2")
+        seq3 = seq2.add(res_err)
+        seq3 = seq3.add(Error.from_e(ValueError(), "val error1"))
 
         self.assertEqual(seq2.value, (1, "hello", 3.14))
         self.assertIsNone(seq2.err)
