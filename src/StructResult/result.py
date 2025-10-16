@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Iterator, Any, Never, ClassVar, Final, TypeVar, overload
+from typing import Optional, Self, Protocol, Any, Never, TypeVar, overload
 """
 Functional error handling system with:
 - Result composition
@@ -29,7 +29,6 @@ class Result(Protocol):
 
 
 class Ok(Result):
-
     """Singleton success marker without value"""
     def is_ok(self) -> bool:
         return True
@@ -50,6 +49,8 @@ class Ok(Result):
         return None
 
     def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+        target_value
+        exception_type
         return False
 
 
@@ -104,6 +105,24 @@ class ErrorPropagator(Result, Protocol):
         if res.err is not None:
             self.append_err(res.err)
         return res.value if hasattr(res, "value") else NULL
+
+    def merge_err[T: "Result"](self, res: T) -> T:
+        """Merges errors from another result and returns the result itself.
+
+        Unlike propagate_err which returns the value, merge_err returns
+        the original result instance preserving its type and identity.
+
+        Useful for chaining operations while collecting errors from intermediate results.
+
+        Example:
+            >>> collector = Simple("base")
+            >>> validation_result = validate_data(data)
+            >>> # Merge errors but keep validation_result for further processing
+            >>> next_step = collector.merge_err(validation_result).check_something()
+        """
+        if res.err is not None:
+            self.append_err(res.err)
+        return res
 
     def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
         if self.err is None:
@@ -247,10 +266,10 @@ class Collector[T](ErrorPropagator, Protocol):
         return self.value
 
     @property
-    def result(self) -> ValueOrError[T]:
-        """Finalize Collection to Value or Error"""
+    def result(self) -> Self | Error:
+        """Finalize Collection to Self or Error"""
         if self.err is None:
-            return self.value
+            return self
         return Error(self.err)
 
 
@@ -355,7 +374,7 @@ class Sequence[*Ts](Collector[tuple[*Ts]], Result):
 
 def is_target(exc_group: ExceptionGroup, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
     """
-    has target Exception in group
+    has target Exception with value in group
     """
     stack = [exc_group]
     while stack:
@@ -375,6 +394,13 @@ def is_target(exc_group: ExceptionGroup, target_value: Any, exception_type: Opti
     return False
 
 
+def check[T: Any](value: ValueOrError[T]) -> T:
+    if isinstance(value, Error):
+        raise value.err
+    return value
+
+
 __all__ = [
-    "SimpleOrError"
+    "SimpleOrError",
+    "ValueOrError"
 ]
