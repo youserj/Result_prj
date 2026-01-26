@@ -180,6 +180,13 @@ class StrictOk(ErrorPropagator):
             return OK
         raise self.err
 
+    def is_ok(self) -> bool:
+        return True
+
+    @property
+    def value(self) -> Ok:
+        return OK
+
     def as_error(self, e: Optional[Exception] = None, msg: str = "") -> Error:
         """
         Convert accumulated errors to Error instance, optionally adding a final error.
@@ -323,7 +330,7 @@ class List[T](Collector[list[Optional[T | Ok | Null]]], Result):
 
 type SimpleOrError[T: Any] = Simple[T] | Error
 
-T1 = TypeVar('T1')
+T1 = TypeVar("T1")
 
 
 class Sequence[*Ts](Collector[tuple[*Ts]], Result):
@@ -347,7 +354,7 @@ class Sequence[*Ts](Collector[tuple[*Ts]], Result):
     value: tuple[*Ts]
     err: Optional[ExceptionGroup]
 
-    def __init__(self, *values: *Ts, err: Optional[ExceptionGroup] = None):
+    def __init__(self, *values: *Ts, err: Optional[ExceptionGroup] = None) -> None:
         self.value = values
         self.err = err
 
