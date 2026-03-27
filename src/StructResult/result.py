@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Self, Protocol, Any, Never, TypeVar, overload
+from typing import Optional, Self, Protocol, Any, Never, TypeVar, overload, runtime_checkable
 """
 Functional error handling system with:
 - Result composition
@@ -259,6 +259,7 @@ class ErrorAccumulator(ErrorPropagator):
         raise RuntimeError("ErrorAccumulator should be converted to Result first")
 
 
+@runtime_checkable
 class Collector[T](ErrorPropagator, Protocol):
     """Protocol for value containers with error handling"""
     value: T
