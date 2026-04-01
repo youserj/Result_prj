@@ -211,6 +211,7 @@ class StrictOk(ErrorPropagator):
 
 
 type ValueOrError[T: Any] = T | Error
+type Fallible = ValueOrError[None]
 
 
 # todo: maybe will replaced by StrictOK
@@ -330,9 +331,6 @@ class List[T](Collector[list[Optional[T | Ok | Null]]], Result):
 
 
 type SimpleOrError[T: Any] = Simple[T] | Error
-type ValueOrError[T: Any] = T | Error
-
-
 T1 = TypeVar("T1")
 
 
