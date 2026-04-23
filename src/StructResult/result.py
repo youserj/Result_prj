@@ -12,6 +12,14 @@ Core concepts:
 - Collector: Value container with error handling
 """
 
+class Null:
+    """Non value result marker"""
+    def __str__(self) -> str:
+        return "NULL"
+
+
+NULL = Null()
+
 
 class Result(Protocol):
     value: Any
@@ -24,7 +32,7 @@ class Result(Protocol):
     def unwrap(self) -> Any:
         """Returns value or raises exception if errors exist"""
 
-    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+    def has(self, target_value: Any = NULL, exception_type: Optional[type[Exception]] = None) -> bool:
         """"""
 
 
@@ -48,22 +56,13 @@ class Ok(Result):
     def err(self) -> None:  # type: ignore[override]
         return None
 
-    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+    def has(self, target_value: Any = NULL, exception_type: Optional[type[Exception]] = None) -> bool:
         target_value
         exception_type
         return False
 
 
 OK = Ok()
-
-
-class Null:
-    """Non value result marker"""
-    def __str__(self) -> str:
-        return "NULL"
-
-
-NULL = Null()
 
 
 class ErrorPropagator(Result, Protocol):
@@ -124,7 +123,7 @@ class ErrorPropagator(Result, Protocol):
             self.append_err(res.err)
         return res
 
-    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+    def has(self, target_value: Any = NULL, exception_type: Optional[type[Exception]] = None) -> bool:
         if self.err is None:
             return False
         return is_target(self.err, target_value, exception_type)
@@ -153,7 +152,7 @@ class Error(ErrorPropagator):
     def value(self) -> Null:
         return NULL
 
-    def has(self, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+    def has(self, target_value: Any = NULL, exception_type: Optional[type[Exception]] = None) -> bool:
         return is_target(self.err, target_value, exception_type)
 
 
@@ -211,7 +210,7 @@ class StrictOk(ErrorPropagator):
 
 
 type ValueOrError[T: Any] = T | Error
-type Fallible = ValueOrError[None]
+type Fallible = ValueOrError[Ok]
 
 
 # todo: maybe will replaced by StrictOK
@@ -380,7 +379,8 @@ class Sequence[*Ts](Collector[tuple[*Ts]], Result):
         return f"({", ".join(map(str, self.value))}){"" if not self.err else str(self.err)}"
 
 
-def is_target(exc_group: ExceptionGroup, target_value: Any, exception_type: Optional[type[Exception]] = None) -> bool:
+
+def is_target(exc_group: ExceptionGroup, target_value: Any = NULL, exception_type: Optional[type[Exception]] = None) -> bool:
     """
     has target Exception with value in group
     """
@@ -396,7 +396,10 @@ def is_target(exc_group: ExceptionGroup, target_value: Any, exception_type: Opti
                     or isinstance(exc, exception_type)
                 )
                 and exc.args
-                and exc.args[0] == target_value
+                and (
+                    target_value is NULL
+                    or exc.args[0] == target_value
+                )
             ):
                 return True
     return False
@@ -408,7 +411,20 @@ def check[T: Any](value: ValueOrError[T]) -> T:
     return value
 
 
+def voe2soe[T: Any](res: ValueOrError[T]) -> SimpleOrError[T]:
+    if isinstance(res, Error):
+        return res
+    return Simple(res)
+
+
+def collector2voe[T: Any](res: Collector[T]) -> ValueOrError[T]:
+    if isinstance(res, Error):
+        return res
+    return res.value
+
+
 __all__ = [
     "SimpleOrError",
-    "ValueOrError"
+    "ValueOrError",
+    "Fallible"
 ]
