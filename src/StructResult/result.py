@@ -264,6 +264,9 @@ class Collector[T](ErrorPropagator, Protocol):
     """Protocol for value containers with error handling"""
     value: T
 
+    def is_ok(self) -> bool:
+        return True
+
     def unpack(self) -> tuple[T, Optional[ExceptionGroup]]:
         return self.value, self.err
 
@@ -379,7 +382,6 @@ class Sequence[*Ts](Collector[tuple[*Ts]], Result):
         return f"({", ".join(map(str, self.value))}){"" if not self.err else str(self.err)}"
 
 
-
 def is_target(exc_group: ExceptionGroup, target_value: Any = NULL, exception_type: Optional[type[Exception]] = None) -> bool:
     """
     has target Exception with value in group
@@ -403,6 +405,22 @@ def is_target(exc_group: ExceptionGroup, target_value: Any = NULL, exception_typ
             ):
                 return True
     return False
+
+
+def get_target[T: Exception](exc_group: ExceptionGroup, target: type[T]) -> ValueOrError[T]:
+    """get target Exception"""
+    stack: list[ExceptionGroup] = [exc_group]
+    while stack:
+        current = stack.pop()
+        for exc in current.exceptions:
+            if isinstance(exc, ExceptionGroup):
+                stack.append(exc)
+            elif (
+                isinstance(exc, target)
+                and exc.args
+            ):
+                return exc
+    return Error.from_e(TypeError(f"not find {target}"))
 
 
 def check[T: Any](value: ValueOrError[T]) -> T:
